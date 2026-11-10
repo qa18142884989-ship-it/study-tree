@@ -339,7 +339,7 @@
   .doc-toc a:hover{background:rgba(56,189,248,.08);color:#cfe0f5}
   .doc-toc a.on{background:rgba(56,189,248,.14);color:#9fe1cb}
   .doc-body{flex:1 1 auto;min-width:0;min-height:0;overflow:auto}
-  .doc-body.md{max-width:none;padding:0 6px 24px 0;font-size:13px;line-height:1.7}
+  .doc-body.md{max-width:none;padding:0 6px 20vh 0;font-size:13px;line-height:1.7}
   .doc-body.md h1{font-size:19px;margin:0 0 .6em;border:0;padding:0}
   .doc-body.md h2{font-size:15px;margin:1.6em 0 .5em}
   .doc-body.md h2:first-of-type{margin-top:.9em}
@@ -966,6 +966,10 @@
     <div class="field">
       <label for="auth-pass">密码</label>
       <input id="auth-pass" type="password" maxlength="64" autocomplete="current-password" placeholder="至少 8 位">
+    </div>
+    <div class="field" id="auth-challenge-field" hidden>
+      <label for="auth-answer" id="auth-challenge-label">验证码</label>
+      <input id="auth-answer" type="text" inputmode="numeric" maxlength="3" autocomplete="off" placeholder="填答案">
     </div>
     <p class="auth-err" id="auth-err"></p>
     <button class="btn-primary" id="auth-go" type="button" style="width:100%">登录</button>
@@ -1661,6 +1665,9 @@
   var $authPass = document.getElementById('auth-pass');
   var $authErr = document.getElementById('auth-err');
   var $authGo = document.getElementById('auth-go');
+  var $authChallengeField = document.getElementById('auth-challenge-field');
+  var $authChallengeLabel = document.getElementById('auth-challenge-label');
+  var $authAnswer = document.getElementById('auth-answer');
   var $authTabLogin = document.getElementById('auth-tab-login');
   var $authTabReg = document.getElementById('auth-tab-reg');
   var $userName = document.getElementById('user-name');
@@ -4606,6 +4613,23 @@
 
   /* ---------------- 账号 ---------------- */
   var authMode = 'login';
+  var authChallenge = { id: '', q: '' };
+
+  /* 注册前的轻量验证码：向服务端取一道一次性算术题 */
+  function loadChallenge() {
+    authChallenge = { id: '', q: '' };
+    $authChallengeLabel.textContent = '验证码';
+    return fetch('/api/auth/challenge', { cache: 'no-store' })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (!j || !j.id) return;
+        authChallenge = { id: j.id, q: j.q };
+        $authChallengeLabel.textContent = '验证：' + j.q;
+      })
+      .catch(function () {
+        $authChallengeLabel.textContent = '验证码获取失败，可刷新页面重试';
+      });
+  }
 
   function setAuthMode(m) {
     authMode = m;
@@ -4614,6 +4638,9 @@
     $authGo.textContent = m === 'login' ? '登录' : '注册并登录';
     $authErr.textContent = '';
     $authPass.setAttribute('autocomplete', m === 'login' ? 'current-password' : 'new-password');
+    $authChallengeField.hidden = m !== 'register';
+    $authAnswer.value = '';
+    if (m === 'register') loadChallenge();
   }
 
   function showAuth() {
@@ -4625,13 +4652,23 @@
     var name = $authName.value.trim();
     var pass = $authPass.value;
     if (!name || !pass) { $authErr.textContent = '用户名和密码都要填'; return; }
+    if (authMode === 'register' && !$authAnswer.value.trim()) {
+      $authErr.textContent = '请填写验证码';
+      return;
+    }
     $authGo.disabled = true;
     $authGo.textContent = '请稍候…';
+
+    var payload = { name: name, password: pass };
+    if (authMode === 'register') {
+      payload.challengeId = authChallenge.id;
+      payload.answer = $authAnswer.value.trim();
+    }
 
     fetch('/api/auth/' + (authMode === 'login' ? 'login' : 'register'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: name, password: pass })
+      body: JSON.stringify(payload)
     }).then(function (r) {
       return r.json().then(function (j) {
         if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
@@ -4652,6 +4689,7 @@
       $authGo.disabled = false;
       setAuthMode(authMode);
       $authErr.textContent = e.message || '网络错误';
+      if (authMode === 'register') loadChallenge();
     });
   }
 
@@ -4911,12 +4949,12 @@
         var list = res.users || [];
         if (!list.length) {
           var tip;
-          if (q && res.selfName && q.toLowerCase() === String(res.selfName).toLowerCase()) {
+          if (res.needMore) {
+            tip = '输入至少 2 个字再搜索。';
+          } else if (q && res.selfName && q.toLowerCase() === String(res.selfName).toLowerCase()) {
             tip = '「' + q + '」是你自己的账号，搜对方的名字才加得到。';
-          } else if ((res.total || 0) <= 1) {
-            tip = '本站目前只有你 1 个账号，还没有别人可以加。让朋友打开同一个地址注册后，再搜他的名字。';
           } else {
-            tip = '没有找到「' + q + '」。本站共 ' + res.total + ' 个账号，用户名要完全一致（不分大小写）。';
+            tip = '没有找到「' + q + '」，用户名要完全一致（不分大小写）。';
           }
           var box = el('div', 'bp-empty', tip);
           if (currentUser && currentUser.admin) {
@@ -5956,7 +5994,12 @@
       a.textContent = h.textContent;
       a.addEventListener('click', function (e) {
         e.preventDefault();
-        h.scrollIntoView({ block: 'start', behavior: 'smooth' });
+        var top = $docBody.scrollTop +
+          (h.getBoundingClientRect().top - $docBody.getBoundingClientRect().top) - 6;
+        $docBody.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+        links.forEach(function (x, i) {
+          x.className = (x === a ? 'on' : '') + (hs[i].tagName === 'H3' ? ' sub' : '');
+        });
       });
       $docToc.appendChild(a);
       links.push(a);
@@ -5968,6 +6011,10 @@
       Array.prototype.forEach.call(hs, function (h, i) {
         if (h.getBoundingClientRect().top - boxTop <= 16) idx = i;
       });
+      // 已经滚到底：直接点亮最后一项，避免「点了没反应」的错觉
+      if ($docBody.scrollTop + $docBody.clientHeight >= $docBody.scrollHeight - 4) {
+        idx = hs.length - 1;
+      }
       links.forEach(function (a, i) {
         a.className = (i === idx ? 'on' : '') + (hs[i].tagName === 'H3' ? ' sub' : '');
       });

@@ -260,22 +260,27 @@ function relationOf(x, y) {
   return 'friend';
 }
 
-function securityHeaders(res) {
+function securityHeaders(req, res) {
+  // 每次响应生成一次性 nonce，页面里的内联 <script> 会被打上同一个 nonce，
+  // 这样 CSP 就不需要放开 script-src 'unsafe-inline'（XSS 缓解能力大幅提升）。
+  const nonce = res._cspNonce || '';
+  const https = PUBLIC_MODE || String(req.headers['x-forwarded-proto'] || '').toLowerCase() === 'https';
+
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Referrer-Policy', 'no-referrer');
   res.setHeader('Permissions-Policy', 'geolocation=(), camera=(), microphone=()');
   res.setHeader('Content-Security-Policy',
     "default-src 'self'; " +
-    "script-src 'self' 'unsafe-inline'; " +
+    "script-src 'self'" + (nonce ? " 'nonce-" + nonce + "'" : '') + "; " +
     "style-src 'self' 'unsafe-inline'; " +
     "img-src 'self' data: blob:; " +
     "font-src 'self' data:; " +
     "connect-src 'self'; " +
     "frame-src 'self' blob:; " +
     "object-src 'none'; base-uri 'none'; form-action 'self'" +
-    (PUBLIC_MODE ? "; frame-ancestors 'none'" : ''));
-  if (PUBLIC_MODE) {
-    res.setHeader('Strict-Transport-Security', 'max-age=15552000; includeSubDomains');
+    (https ? "; frame-ancestors 'none'" : ''));
+  if (https) {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
     res.setHeader('X-Frame-Options', 'DENY');
   }
 }
@@ -291,6 +296,19 @@ function clientIp(req) {
 
 /* 登录/注册限速：同一 IP 或同一账号 10 分钟内失败次数过多就临时锁住 */
 const authHits = new Map();
+
+/* 注册验证码暂存：id → { sum, exp } */
+const regChallenges = new Map();
+
+/* 校验并立即作废（一次性） */
+function consumeChallenge(id, answer) {
+  const key = String(id || '');
+  const rec = regChallenges.get(key);
+  if (!rec) return false;
+  regChallenges.delete(key);
+  if (rec.exp < Date.now()) return false;
+  return String(answer == null ? '' : answer).trim() === String(rec.sum);
+}
 
 function hitsKey(key, limit, windowMs) {
   const now = Date.now();
@@ -729,6 +747,25 @@ function collectSubtree(tree, rootId) {
 async function handleAuth(req, res, url) {
   const p = url.pathname;
 
+  /* 轻量验证码：一次性算术题（无需第三方服务），5 分钟有效、答过即作废 */
+  if (p === '/api/auth/challenge' && req.method === 'GET') {
+    if (hitsKey('chal:' + clientIp(req), 60, 10 * 60 * 1000)) {
+      return fail(res, 429, '请求太频繁，请稍后再试');
+    }
+    const a = crypto.randomInt(2, 10);
+    const b = crypto.randomInt(2, 10);
+    const id = crypto.randomBytes(8).toString('hex');
+    regChallenges.set(id, { sum: a + b, exp: Date.now() + 5 * 60 * 1000 });
+    if (regChallenges.size > 2000) {
+      const now = Date.now();
+      Array.from(regChallenges.keys()).forEach((k) => {
+        const v = regChallenges.get(k);
+        if (!v || v.exp < now) regChallenges.delete(k);
+      });
+    }
+    return sendJson(res, 200, { id: id, q: a + ' + ' + b + ' = ?' });
+  }
+
   if (p === '/api/auth/me' && req.method === 'GET') {
     const u = currentUser(req);
     return sendJson(res, 200, { user: publicUser(u) });
@@ -741,10 +778,20 @@ async function handleAuth(req, res, url) {
 
     const ip = clientIp(req);
     const rateKey = 'reg:' + ip;
-    const blocked = hitsBlocked(rateKey);
+    const dayKey = 'reg-day:' + ip;
+    const blocked = hitsBlocked(rateKey) || hitsBlocked(dayKey);
     if (blocked) return fail(res, 429, '注册太频繁，请 ' + blocked + ' 分钟后再试');
-    if (hitsKey(rateKey, 10, 10 * 60 * 1000)) {
-      return fail(res, 429, '注册太频繁，请 10 分钟后再试');
+    // 双重限速：同一 IP 每小时 5 次、每天 15 次
+    if (hitsKey(dayKey, 15, 24 * 60 * 60 * 1000)) {
+      return fail(res, 429, '这个地址今天注册次数已达上限，请明天再试');
+    }
+    if (hitsKey(rateKey, 5, 60 * 60 * 1000)) {
+      return fail(res, 429, '注册太频繁，请 1 小时后再试');
+    }
+
+    // 验证码：一次性算术题，缺失或不答对直接拒绝（挡批量注册）
+    if (!consumeChallenge(body.challengeId, body.answer)) {
+      return fail(res, 400, '验证码不正确，请刷新后重新填写');
     }
 
     // TT_CLOSE_REGISTER=1：已有账号后关闭注册，只有管理员能建号（公网站点建议开）
@@ -756,7 +803,7 @@ async function handleAuth(req, res, url) {
     const password = String(body.password || '');
     if (name.length < 2 || name.length > 20) return fail(res, 400, '用户名 2–20 个字符');
     if (password.length < 8) return fail(res, 400, '密码至少 8 位');
-    if (findUserByName(name)) return fail(res, 409, '这个用户名已被占用');
+    if (findUserByName(name)) return fail(res, 409, '这个用户名不可用，换一个试试');
 
     const salt = crypto.randomBytes(16).toString('hex');
     const user = {
@@ -1525,13 +1572,21 @@ async function handleApi(req, res, url, user) {
   }
 
   if (p === '/api/users' && req.method === 'GET') {
+    // 防用户枚举：必须给 ≥2 个字符，限制频率与返回条数，且不返回全站账号总数
     const q = String(url.searchParams.get('q') || '').trim().toLowerCase();
+    if (hitsKey('search:' + uid, 60, 10 * 60 * 1000)) {
+      return fail(res, 429, '搜索太频繁，请稍后再试');
+    }
+    if (q.length < 2) {
+      return sendJson(res, 200, { users: [], needMore: true, selfName: user.name });
+    }
     const list = users
       .filter((u) => u.id !== uid)
-      .filter((u) => !q || u.name.toLowerCase().indexOf(q) > -1)
-      .slice(0, 20)
+      .filter((u) => u.name.toLowerCase().indexOf(q) > -1 ||
+        String(u.displayName || '').toLowerCase().indexOf(q) > -1)
+      .slice(0, 12)
       .map((u) => ({ id: u.id, name: u.name, displayName: displayNameOf(u), avatar: typeof u.avatar === 'string' ? u.avatar : '', rel: relationOf(uid, u.id), friend: areFriends(uid, u.id) }));
-    return sendJson(res, 200, { users: list, total: users.length, selfName: user.name });
+    return sendJson(res, 200, { users: list, selfName: user.name });
   }
 
   if (p === '/api/friends' && req.method === 'GET') {
@@ -1789,8 +1844,25 @@ async function serveStatic(req, res, url) {
   try { stat = await fsp.stat(full); } catch (e) { return fail(res, 404, '页面不存在'); }
   if (!stat.isFile()) return fail(res, 404, '页面不存在');
 
+  const ext = path.extname(full).toLowerCase();
+
+  // HTML 走字符串返回：给内联 <script> 打上本次请求的 CSP nonce
+  if (ext === '.html') {
+    let html;
+    try { html = await fsp.readFile(full, 'utf8'); } catch (e) { return fail(res, 404, '页面不存在'); }
+    html = html.replace(/<script(?![^>]*\bsrc=)(?![^>]*\bnonce=)/g,
+      '<script nonce="' + res._cspNonce + '"');
+    const buf = Buffer.from(html, 'utf8');
+    res.writeHead(200, {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Content-Length': buf.length,
+      'Cache-Control': 'no-store'
+    });
+    return res.end(buf);
+  }
+
   res.writeHead(200, {
-    'Content-Type': MIME[path.extname(full).toLowerCase()] || 'application/octet-stream',
+    'Content-Type': MIME[ext] || 'application/octet-stream',
     'Content-Length': stat.size,
     'Cache-Control': 'no-store'
   });
@@ -1803,7 +1875,8 @@ async function serveStatic(req, res, url) {
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://localhost');
-  securityHeaders(res);
+  res._cspNonce = crypto.randomBytes(16).toString('base64');
+  securityHeaders(req, res);
   try {
     if (url.pathname === '/api/hello' && req.method === 'GET') {
       return sendJson(res, 200, {
