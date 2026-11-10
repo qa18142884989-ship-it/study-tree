@@ -731,7 +731,7 @@ async function handleAuth(req, res, url) {
 
   if (p === '/api/auth/me' && req.method === 'GET') {
     const u = currentUser(req);
-    return sendJson(res, 200, { user: publicUser(u), userCount: users.length });
+    return sendJson(res, 200, { user: publicUser(u) });
   }
 
   if (p === '/api/auth/register' && req.method === 'POST') {
@@ -1808,9 +1808,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/hello' && req.method === 'GET') {
       return sendJson(res, 200, {
         app: 'study-tree',
-        apiVersion: API_VERSION,
-        startedAt: STARTED_AT,
-        pid: process.pid
+        apiVersion: API_VERSION
       });
     }
 
