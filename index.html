@@ -330,6 +330,23 @@
   .md h1{font-size:22px;border-bottom:1px solid rgba(122,152,200,.18);padding-bottom:8px}
   .md h2{font-size:18px}
   .md h3{font-size:16px}
+  .doc-wrap{display:flex;gap:16px;max-height:70vh}
+  .doc-toc{flex:0 0 126px;min-height:0;overflow:auto;padding:2px 10px 2px 0;border-right:1px solid rgba(122,152,200,.14)}
+  .doc-toc a{
+    display:block;padding:5px 8px;border-radius:6px;color:#8ea3c2;text-decoration:none;
+    font-size:12px;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .doc-toc a:hover{background:rgba(56,189,248,.08);color:#cfe0f5}
+  .doc-toc a.on{background:rgba(56,189,248,.14);color:#9fe1cb}
+  .doc-body{flex:1 1 auto;min-width:0;min-height:0;overflow:auto}
+  .doc-body.md{max-width:none;padding:0 6px 24px 0;font-size:13px;line-height:1.7}
+  .doc-body.md h1{font-size:19px;margin:0 0 .6em;border:0;padding:0}
+  .doc-body.md h2{font-size:15px;margin:1.6em 0 .5em}
+  .doc-body.md h2:first-of-type{margin-top:.9em}
+  @media (max-width:720px){
+    .doc-toc{display:none}
+    .doc-body.md{padding:0 0 24px}
+  }
   .md p{margin:.7em 0}
   .md ul,.md ol{margin:.6em 0;padding-left:22px}
   .md li{margin:.25em 0}
@@ -760,10 +777,8 @@
   .tt-block.plan b{font-weight:400}
   .tt-now{position:absolute;left:0;right:0;height:0;border-top:2px solid #f87171;z-index:4;pointer-events:none}
   .tt-now::before{content:'';position:absolute;left:-4px;top:-5px;width:8px;height:8px;border-radius:50%;background:#f87171}
-  .tt-legend{font-size:10.5px;color:#5d7090;margin:6px 0 0}
   /* ---------- 时间规划 ---------- */
   .timer-hero{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:6px}
-  .timer-sub{font-family:var(--mono);font-size:11px;color:#6b7d99;margin:0 0 12px}
   .timer-cell{background:rgba(8,14,24,.55);border:1px solid rgba(122,152,200,.12);border-radius:9px;padding:9px 10px}
   .timer-cell span{display:block;font-size:10.5px;color:#6b7d99;letter-spacing:.04em}
   .timer-cell b{display:block;margin-top:4px;font-family:var(--mono);font-size:16px;color:#cfe4ff}
@@ -775,7 +790,6 @@
   .timer-sec{margin-top:14px;border-top:1px solid rgba(122,152,200,.1);padding-top:12px}
   .timer-sec-head{display:flex;align-items:baseline;gap:8px;margin-bottom:8px}
   .timer-sec-head b{font-size:13px;color:#dbe8f7}
-  .timer-sec-head span{font-size:11px;color:#5d7090}
   .timer-list{display:flex;flex-direction:column;gap:5px;margin-bottom:8px}
   .timer-item{display:flex;align-items:center;gap:8px;padding:6px 9px;border-radius:7px;background:rgba(8,14,24,.45);border:1px solid rgba(122,152,200,.1);font-size:12px;color:#b7c8dd}
   .timer-item .ti-day{font-family:var(--mono);font-size:10.5px;color:#6f9fd0;min-width:34px}
@@ -972,7 +986,7 @@
 
 <div class="rail" id="rail">
   <div class="rail-head">
-    <b>父级能力</b>
+    <b>能力</b>
     <span id="rail-count">0</span>
   </div>
   <div id="rail-inner"></div>
@@ -1022,23 +1036,22 @@
       <div class="field">
         <label>类型</label>
         <div class="seg" role="group">
-          <button type="button" class="seg-btn is-on" data-kind="group" id="seg-group">父级能力</button>
+          <button type="button" class="seg-btn is-on" data-kind="group" id="seg-group">能力</button>
           <button type="button" class="seg-btn" data-kind="leaf" id="seg-leaf">知识点</button>
         </div>
       </div>
       <div class="field">
-        <label for="new-name" id="new-name-label">父级名称</label>
+        <label for="new-name" id="new-name-label">能力名称</label>
         <input id="new-name" type="text" maxlength="40" autocomplete="off" placeholder="例如：数学">
       </div>
       <div class="field" id="new-cost-field" hidden>
-        <label for="new-cost">科技点（1 点 = 1 小时）</label>
+        <label for="new-cost">科技点</label>
         <input id="new-cost" type="number" min="1" step="1" inputmode="numeric" placeholder="例如：3">
       </div>
       <div class="field" id="new-parent-field" hidden>
-        <label for="new-parent">归属父级</label>
+        <label for="new-parent">归属能力</label>
         <select id="new-parent"></select>
       </div>
-      <p class="hint" id="new-hint">父级不单独计价，成本等于其下知识点之和。</p>
       <button class="btn-primary" id="btn-create" type="button" style="width:100%">创建</button>
 
       <div class="divider"></div>
@@ -1049,11 +1062,6 @@
         <button class="btn-ghost" id="btn-import2" type="button">导入文件</button>
       </div>
       <p class="hint" id="data-usage">—</p>
-      <p class="hint">
-        全部内容自动存到 <span id="data-dir" style="font-family:var(--mono);font-size:11px;color:#8fd8ff;word-break:break-all">data/</span>，
-        笔记原文件在 <code style="font-family:var(--mono);font-size:11px;color:#8fd8ff">data/notes/</code>。
-        导出的 JSON 含全部节点、学习记录与笔记附件，别人导入后即可使用你的学习树。
-      </p>
       <div class="save-state" id="data-state" style="text-align:left">—</div>
 
       <div style="text-align:center;margin-top:14px">
@@ -1069,7 +1077,7 @@
       </div>
       <div class="field-row">
         <div class="field">
-          <label for="edit-cost" id="edit-cost-label">科技点（1 点 = 1 小时）</label>
+          <label for="edit-cost" id="edit-cost-label">科技点</label>
           <input id="edit-cost" type="number" min="1" step="1" inputmode="numeric">
         </div>
         <div class="field" style="flex:0 0 108px">
@@ -1079,11 +1087,10 @@
           </div>
         </div>
       </div>
-      <p class="hint" id="edit-cost-hint">1 科技点 = 1 小时学习时间。</p>
 
       <div class="field-row" id="edit-rel-row">
         <div class="field">
-          <label for="edit-parent">所属父级</label>
+          <label for="edit-parent">所属能力</label>
           <select id="edit-parent"></select>
         </div>
         <div class="field">
@@ -1091,7 +1098,6 @@
           <select id="edit-prereq"></select>
         </div>
       </div>
-      <p class="hint" id="edit-rel-hint">「前置」表示必须先点亮它，才能点亮当前节点；同一父级下会横向串成一条链。</p>
 
       <div class="divider"></div>
 
@@ -1127,7 +1133,7 @@
       </div>
 
       <div class="divider"></div>
-      <button class="btn-ghost" id="btn-publish" type="button" style="width:100%;margin-bottom:8px" hidden>◈ 把这个父级发布成蓝图</button>
+      <button class="btn-ghost" id="btn-publish" type="button" style="width:100%;margin-bottom:8px" hidden>◈ 把这个能力发布成蓝图</button>
       <button class="btn-danger" id="btn-delete" type="button" style="width:100%">删除这个节点</button>
     </div>
 
@@ -1300,15 +1306,13 @@
     </div>
 
     <div class="timer-hero" id="timer-hero"></div>
-    <div class="timer-sub" id="timer-sub"></div>
 
     <div class="field">
-      <label for="timer-rate">转化率：整周空闲 → 科技点</label>
+      <label for="timer-rate">转化率</label>
       <div class="timer-rate-row">
         <input id="timer-rate" type="range" min="0" max="100" step="1">
         <b id="timer-rate-val">50%</b>
       </div>
-      <p class="hint">整周空闲（默认 7 × 12h = 84h）× 转化率 = 本周总量，<b>周一一次性到账</b>。例：84h × 50% = 42 点。</p>
     </div>
 
     <div class="timer-sec">
@@ -1324,11 +1328,10 @@
           <div class="tt-grid" id="tt-grid"></div>
         </div>
       </div>
-      <p class="tt-legend">实色 = 课程，虚框 = 日常规划；点卡片可删除，红线是当前时间。</p>
     </div>
 
     <div class="timer-sec">
-      <div class="timer-sec-head"><b>添加课程</b><span>勾选星期，一次加入多天</span></div>
+      <div class="timer-sec-head"><b>添加课程</b></div>
       <div class="timer-add">
         <input id="tc-title" type="text" maxlength="30" placeholder="课程名">
         <input id="tc-start" type="time" value="08:00">
@@ -1340,7 +1343,7 @@
     </div>
 
     <div class="timer-sec">
-      <div class="timer-sec-head"><b>添加日常规划</b><span>固定作息，如晨跑、通勤、吃饭</span></div>
+      <div class="timer-sec-head"><b>添加日常规划</b></div>
       <div class="timer-add timer-add-plan">
         <input id="tp-title" type="text" maxlength="30" placeholder="事项">
         <input id="tp-start" type="time" value="07:00">
@@ -1354,12 +1357,15 @@
 </div>
 
 <div class="modal" id="doc-modal" hidden>
-  <div class="modal-box" style="max-width:780px">
+  <div class="modal-box" style="max-width:900px">
     <div class="admin-head">
       <h3>使用说明</h3>
       <button class="icon-btn" id="doc-close" type="button" aria-label="关闭">×</button>
     </div>
-    <div class="doc-body md" id="doc-body" style="max-height:72vh;overflow:auto"></div>
+    <div class="doc-wrap">
+      <nav class="doc-toc" id="doc-toc"></nav>
+      <div class="doc-body md" id="doc-body"></div>
+    </div>
   </div>
 </div>
 
@@ -1592,12 +1598,10 @@
   var $newCostField = document.getElementById('new-cost-field');
   var $newParent = document.getElementById('new-parent');
   var $newParentField = document.getElementById('new-parent-field');
-  var $newHint = document.getElementById('new-hint');
   var $btnCreate = document.getElementById('btn-create');
   var $editName = document.getElementById('edit-name');
   var $editCost = document.getElementById('edit-cost');
   var $editCostLabel = document.getElementById('edit-cost-label');
-  var $editCostHint = document.getElementById('edit-cost-hint');
   var $editState = document.getElementById('edit-state');
   var $editNote = document.getElementById('edit-note');
   var $nodePhotos = document.getElementById('node-photos');
@@ -1618,7 +1622,6 @@
   var $bannerText = document.getElementById('banner-text');
   var $dataUsage = document.getElementById('data-usage');
   var $dataState = document.getElementById('data-state');
-  var $dataDir = document.getElementById('data-dir');
   var $importInput = document.getElementById('import-input');
   var $importModal = document.getElementById('import-modal');
   var $importFile = document.getElementById('import-file');
@@ -1634,7 +1637,6 @@
   var $editParent = document.getElementById('edit-parent');
   var $editPrereq = document.getElementById('edit-prereq');
   var $relRow = document.getElementById('edit-rel-row');
-  var $relHint = document.getElementById('edit-rel-hint');
   var $tasks = document.getElementById('tasks');
   var $taskList = document.getElementById('task-list');
   var $tasksEmpty = document.getElementById('tasks-empty');
@@ -1698,9 +1700,9 @@
   var $btnTimer = document.getElementById('btn-timer');
   var $docModal = document.getElementById('doc-modal');
   var $docBody = document.getElementById('doc-body');
+  var $docToc = document.getElementById('doc-toc');
   var $timerModal = document.getElementById('timer-modal');
   var $timerHero = document.getElementById('timer-hero');
-  var $timerSub = document.getElementById('timer-sub');
   var $timerRate = document.getElementById('timer-rate');
   var $timerRateVal = document.getElementById('timer-rate-val');
   var $ttPrev = document.getElementById('tt-prev');
@@ -1730,7 +1732,6 @@
   var $meNickSave = document.getElementById('me-nick-save');
   var $meLogin = document.getElementById('me-login');
   var $bpEditScore = document.getElementById('bp-edit-score');
-  var $meName = document.getElementById('me-name');
   var $meNameText = document.getElementById('me-name-text');
   var $meRole = document.getElementById('me-role');
   var $btnAdmin = document.getElementById('btn-admin');
@@ -2077,7 +2078,7 @@
     if (failed) { $dataState.textContent = '保存失败 · 请检查本地服务是否还在运行'; return; }
     var d = lastSaved;
     $dataState.textContent = d
-      ? '已保存到 data/tree.json · ' + p2(d.getHours()) + ':' + p2(d.getMinutes()) + ':' + p2(d.getSeconds())
+      ? '已保存 · ' + p2(d.getHours()) + ':' + p2(d.getMinutes()) + ':' + p2(d.getSeconds())
       : '尚未保存';
   }
 
@@ -2531,9 +2532,9 @@
     if (!roots.length) {
       var re = el('div', 'rail-empty');
       re.style.cssText = 'position:absolute;left:12px;right:12px;top:40px';
-      re.appendChild(document.createTextNode('这个分类下还没有父级'));
+      re.appendChild(document.createTextNode('还没有能力'));
       re.appendChild(el('br'));
-      re.appendChild(document.createTextNode('点右上角「＋ 新增」建一个'));
+      re.appendChild(document.createTextNode('点右上角「＋ 新增」'));
       $railInner.appendChild(re);
     }
 
@@ -2613,10 +2614,10 @@
       var ph = el('div', 'canvas-empty');
       ph.style.left = PAD + 'px';
       ph.style.top = PAD + 'px';
-      ph.appendChild(el('b', '', roots.length ? '这个父级下还没有知识点' : '这张画布还是空的'));
+      ph.appendChild(el('b', '', roots.length ? '还没有知识点' : '画布是空的'));
       ph.appendChild(document.createTextNode(roots.length
-        ? '点左侧的父级卡片，用「＋ 新增」往里加知识点。'
-        : '按右上角「＋ 新增」建一个父级能力，再往里添加知识点。'));
+        ? '点左侧能力卡片，用「＋ 新增」添加知识点。'
+        : '点右上角「＋ 新增」，先建一个能力。'));
       var sub = el('span', '', 'EMPTY CANVAS · 也可以先导入别人的文件');
       sub.style.display = 'block';
       sub.style.marginTop = '10px';
@@ -2873,7 +2874,7 @@
     if (!$localNoteState) return;
     var on = !!localDir;
     if (!fsSupported()) {
-      $localNoteState.textContent = '当前浏览器不支持本地文件夹（请用 Chrome / Edge），暂时不能上传笔记';
+      $localNoteState.textContent = '浏览器不支持本地文件夹（请用 Chrome / Edge）';
       $localNoteState.setAttribute('data-on', '0');
       $localPick.hidden = true;
       $localDisconnect.hidden = true;
@@ -2884,8 +2885,8 @@
       return;
     }
     $localNoteState.textContent = on
-      ? '已连接「' + localDir.name + '」：上传的笔记直接存到这个文件夹，服务器只记文件名'
-      : '未连接：上传前请先选择一个本地文件夹（笔记不会存到服务器）';
+      ? '已连接「' + localDir.name + '」'
+      : '未连接 · 笔记只存本地';
     $localNoteState.setAttribute('data-on', on ? '1' : '0');
     $localPick.hidden = false;
     $localPick.textContent = on ? '更换文件夹' : '选择本地文件夹';
@@ -3166,7 +3167,7 @@
     var g = findNode(id);
     if (!g || g.kind !== 'group') return;
     var kids = childrenOf(id);
-    if (!kids.length) { toast('这个父级下还没有知识点', true); return; }
+    if (!kids.length) { toast('这个能力下还没有知识点', true); return; }
 
     // 按前置顺序排出这一组能被点亮的序列
     var order = [];
@@ -3203,7 +3204,7 @@
     var text = isGroup
       ? (kids.length
         ? '其下 ' + kids.length + ' 个知识点会变成独立节点（不会被删除），已消耗的科技点不退回。'
-        : '这个父级下还没有知识点。')
+        : '这个能力下还没有知识点。')
       : '已消耗的科技点不会退回，挂在上面的学习记录和笔记也会一起删除。';
 
     askConfirm('删除「' + node.name + '」？', text, '删除').then(function (yes) {
@@ -3250,11 +3251,8 @@
     $segLeaf.className = 'seg-btn' + (isGroup ? '' : ' is-on');
     $newCostField.hidden = isGroup;
     $newParentField.hidden = isGroup;
-    $newNameLabel.textContent = isGroup ? '父级名称' : '知识点名称';
+    $newNameLabel.textContent = isGroup ? '能力名称' : '知识点名称';
     $newName.placeholder = isGroup ? '例如：数学' : '例如：一元二次方程';
-    $newHint.textContent = isGroup
-      ? '父级不单独计价，成本等于其下知识点之和。'
-      : '1 科技点 = 1 小时；父级成本会随子节点自动累加。';
   }
 
   function syncParentSelect() {
@@ -3300,13 +3298,11 @@
       $editCost.value = '';
       $editCost.disabled = true;
       $editCost.placeholder = '由子节点汇总';
-      $editCostLabel.textContent = '科技点（子节点汇总）';
-      $editCostHint.textContent = '父级成本 = 子节点之和，当前共 ' + groupTotal(node.id) + ' 小时。';
+      $editCostLabel.textContent = '科技点（汇总）';
     } else {
       $editCost.disabled = false;
       if ($editCost.value !== String(node.cost)) $editCost.value = String(node.cost);
-      $editCostLabel.textContent = '科技点（1 点 = 1 小时）';
-      $editCostHint.textContent = '1 科技点 = 1 小时学习时间。';
+      $editCostLabel.textContent = '科技点';
     }
 
     var done = node.kind === 'group' ? groupDone(node.id) : node.unlocked;
@@ -3428,7 +3424,6 @@
 
     var isGroup = node.kind === 'group';
     $relRow.hidden = isGroup;
-    $relHint.hidden = isGroup;
     if (isGroup) return;
 
     var gs = groups();
@@ -3605,10 +3600,7 @@
 
       if (kind === 'doc' || kind === 'ppt' || kind === 'other') {
         var box = el('div', 'reader-unavail');
-        box.appendChild(el('p', '', '这个文件已经安全保存，可以随时下载查看。'));
-        box.appendChild(el('p', '', '但浏览器无法直接打开 Word / PowerPoint 这类 Office 文档，'));
-        box.appendChild(el('p', '', '请点右上角「下载」，用本机 Word / PowerPoint / WPS 打开查看或编辑。'));
-        box.appendChild(el('p', 'unavail-tip', '想直接在网页里编辑，请改用 .md 格式的笔记。'));
+        box.appendChild(el('p', '', '浏览器打不开 Office 文档，点右上角「下载」用本机软件打开。'));
         $readerBody.appendChild(box);
         $readerEdit.hidden = true;
         $readerSave.hidden = true;
@@ -3828,7 +3820,7 @@
       setCreateKind('leaf');
       syncParentSelect();
       $newParent.value = gid;
-      toast('已创建父级「' + name + '」，接着加知识点吧');
+      toast('已创建能力「' + name + '」');
       $newName.focus();
       return;
     }
@@ -4465,7 +4457,7 @@
     var pts = doc.points;
     $importFile.textContent = fileName || '';
     $importSummary.textContent =
-      '父级 ' + groups + ' 个 · 知识点 ' + leaves + ' 个 · 笔记 ' + fileCount + ' 个 · 科技点 ' +
+      '能力 ' + groups + ' 个 · 知识点 ' + leaves + ' 个 · 笔记 ' + fileCount + ' 个 · 科技点 ' +
       (pts === undefined || pts === null ? '—' : pts);
     $importModal.hidden = false;
   }
@@ -4542,8 +4534,7 @@
   function refreshDataPanel() {
     var total = 0;
     state.files.forEach(function (f) { total += f.size || 0; });
-    $dataUsage.textContent = '节点 ' + state.abilities.length + ' 个（父级 ' +
-      groups().length + '） · 笔记 ' + state.files.length + ' 个（' + fmtSize(total) + '）';
+    $dataUsage.textContent = '节点 ' + state.abilities.length + ' · 笔记 ' + state.files.length + ' · ' + fmtSize(total);
     markSaved(false);
   }
 
@@ -5255,7 +5246,7 @@
           main.appendChild(el('div', 'adm-meta',
             '注册 ' + fmtTime(u.createdAt) + ' · 最近登录 ' + fmtTime(u.lastLoginAt)));
           main.appendChild(el('div', 'adm-stats',
-            '父级 ' + u.groups + ' · 知识点 ' + u.leaves + '（已点亮 ' + u.unlocked + '）'));
+            '能力 ' + u.groups + ' · 知识点 ' + u.leaves + '（已点亮 ' + u.unlocked + '）'));
           main.appendChild(el('div', 'adm-stats',
             '科技点 ' + u.points + ' · Lv.' + levelOf(u.exp) + ' · 笔记 ' + u.files +
             ' · 蓝图 ' + u.blueprints + ' · 反馈 ' + u.feedback));
@@ -5688,11 +5679,6 @@
     $timerHero.appendChild(cell('本周总量', fmtPoint(st.total) + ' 点'));
     $timerHero.appendChild(cell('当前可用', fmtPoint(st.available) + ' 点', 'hot'));
     $timerHero.appendChild(cell('距周结束', fmtCountdown(st.leftMs), 'warn'));
-    if ($timerSub) {
-      $timerSub.textContent = '整周一次性到账：总量 ' + fmtPoint(st.total) + ' 点 · 已用 ' +
-        fmtPoint(st.spent) + ' · 任务奖励 ' + fmtPoint(st.bonus) +
-        ' · 剩余空闲 ' + fmtPoint(st.remainHours) + ' h';
-    }
     if (document.activeElement !== $timerRate) $timerRate.value = String(st.rate);
     $timerRateVal.textContent = st.rate + '%';
   }
@@ -5954,6 +5940,42 @@
   /* ---------------- 使用说明（文档存在服务器 /api/doc） ---------------- */
   var docLoaded = false;
 
+  /* 把文档的 h2/h3 抽成左侧目录，滚动时高亮当前节 */
+  function buildDocToc() {
+    if (!$docToc || !$docBody) return;
+    $docToc.textContent = '';
+    var hs = $docBody.querySelectorAll('h2, h3');
+    if (!hs.length) return;
+
+    var links = [];
+    Array.prototype.forEach.call(hs, function (h, i) {
+      h.id = 'docsec-' + i;
+      var a = document.createElement('a');
+      a.href = '#' + h.id;
+      a.className = h.tagName === 'H3' ? 'sub' : '';
+      a.textContent = h.textContent;
+      a.addEventListener('click', function (e) {
+        e.preventDefault();
+        h.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      });
+      $docToc.appendChild(a);
+      links.push(a);
+    });
+
+    function mark() {
+      var boxTop = $docBody.getBoundingClientRect().top;
+      var idx = 0;
+      Array.prototype.forEach.call(hs, function (h, i) {
+        if (h.getBoundingClientRect().top - boxTop <= 16) idx = i;
+      });
+      links.forEach(function (a, i) {
+        a.className = (i === idx ? 'on' : '') + (hs[i].tagName === 'H3' ? ' sub' : '');
+      });
+    }
+    $docBody.onscroll = mark;
+    mark();
+  }
+
   function openDoc() {
     if (!$docModal) return;
     $docModal.hidden = false;
@@ -5963,6 +5985,7 @@
       .then(function (r) { return r.json(); })
       .then(function (res) {
         $docBody.innerHTML = mdToHtml(res.markdown || '暂时没有说明文档');
+        buildDocToc();
         docLoaded = true;
       })
       .catch(function () {
@@ -6149,7 +6172,7 @@
       if (bpQuery) hint = '没有找到含「' + bpQuery + '」的蓝图。换个关键词，或点「全部」看看。';
       else if (bpCat === 'friends') hint = '你的好友还没有发布蓝图。加几个好友，或催他们来发布吧。';
       else if (bpCat) hint = '「' + bpCatName(bpCat) + '」分类下还没有蓝图。';
-      else hint = '市场里还没有蓝图。你可以在自己的父级卡片里点「把这个父级发布成蓝图」。';
+      else hint = '市场里还没有蓝图。在自己的能力卡片里点「发布成蓝图」。';
       $bpList.appendChild(el('div', 'bp-empty', hint));
       return;
     }
@@ -6219,7 +6242,7 @@
         $bpMineList.textContent = '';
         if (!list.length) {
           $bpMineList.appendChild(el('div', 'bp-empty',
-            '你还没有发布过蓝图。打开一个父级能力的编辑面板，点「把这个父级发布成蓝图」。'));
+            '你还没有发布过蓝图。打开一个能力的编辑面板，点「发布成蓝图」。'));
           return;
         }
         list.forEach(function (bp) {
@@ -6281,7 +6304,7 @@
         var nm = el('b', '', (row.d ? '└ ' : '') + row.n.name);
         if (row.d) nm.style.paddingLeft = (row.d * 11) + 'px';
         el2.appendChild(nm);
-        el2.appendChild(el('span', '', row.n.kind === 'group' ? '父级' : row.n.cost + ' 小时'));
+        el2.appendChild(el('span', '', row.n.kind === 'group' ? '能力' : row.n.cost + ' 小时'));
         box.appendChild(el2);
       });
   }
@@ -6456,7 +6479,7 @@
   $bpEditSync.addEventListener('click', function () {
     if (!bpEditId) return;
     askConfirm('用当前学习树更新内容？',
-      '会把蓝图里的节点、学习记录和笔记文件换成「来源父级」现在的内容。别人之后导入拿到的是新版本。',
+      '会把蓝图里的节点、学习记录和笔记文件换成「来源能力」现在的内容。别人之后导入拿到的是新版本。',
       '更新内容').then(function (yes) {
       if (!yes) return;
       $bpEditSync.disabled = true;
@@ -6507,7 +6530,7 @@
   function openPublish() {
     if (!currentId) return;
     var node = findNode(currentId);
-    if (!node || node.kind !== 'group') { toast('只能把父级发布成蓝图', true); return; }
+    if (!node || node.kind !== 'group') { toast('只能把能力发布成蓝图', true); return; }
     publishNodeId = node.id;
     var ids = subtreeIds(node.id);
     var kids = ids.length - 1;
@@ -6579,11 +6602,6 @@
       });
       refreshDataPanel();
       loadFriends();
-      fetch(API.status).then(function (r) { return r.json(); }).then(function (s) {
-        if (!s) return;
-        $dataDir.textContent = 'data/users/' + (s.user ? s.user.name : '');
-        $dataDir.title = s.user ? s.user.name : '';
-      }).catch(function () {});
     }).catch(function (e) {
       showBootError('读取数据失败（' + (e.message || '未知错误') + '）。');
     });
