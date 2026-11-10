@@ -330,6 +330,13 @@
   .md h1{font-size:22px;border-bottom:1px solid rgba(122,152,200,.18);padding-bottom:8px}
   .md h2{font-size:18px}
   .md h3{font-size:16px}
+  .chat-body{height:320px;overflow:auto;padding:6px 2px;display:flex;flex-direction:column;gap:8px}
+  .chat-msg{max-width:78%;padding:7px 11px;border-radius:12px;font-size:13px;line-height:1.55;white-space:pre-wrap;word-break:break-word}
+  .chat-msg.other{align-self:flex-start;background:rgba(122,152,200,.14);color:#dbe8f7;border-bottom-left-radius:4px}
+  .chat-msg.me{align-self:flex-end;background:rgba(52,211,153,.16);color:#c8f5e2;border-bottom-right-radius:4px}
+  .chat-empty{color:#5d7090;font-size:12px;text-align:center;margin:auto}
+  .chat-send{display:flex;gap:8px;margin-top:10px}
+  .chat-send input{flex:1 1 auto}
   .doc-wrap{display:flex;gap:16px;max-height:70vh}
   .doc-toc{flex:0 0 126px;min-height:0;overflow:auto;padding:2px 10px 2px 0;border-right:1px solid rgba(122,152,200,.14)}
   .doc-toc a{
@@ -1302,6 +1309,20 @@
   </div>
 </div>
 
+<div class="modal" id="chat-modal" hidden>
+  <div class="modal-box" style="max-width:520px">
+    <div class="admin-head">
+      <h3 id="chat-title">聊天</h3>
+      <button class="icon-btn" id="chat-close" type="button" aria-label="关闭">×</button>
+    </div>
+    <div class="chat-body" id="chat-body"></div>
+    <div class="chat-send">
+      <input id="chat-input" type="text" maxlength="1000" placeholder="发条消息…" autocomplete="off">
+      <button class="btn-primary" id="chat-send-btn" type="button">发送</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal" id="timer-modal" hidden>
   <div class="modal-box" style="max-width:700px">
     <div class="admin-head">
@@ -1774,6 +1795,11 @@
   var $stBp = document.getElementById('st-bp');
   var $friendList = document.getElementById('friend-list');
   var $friendCount = document.getElementById('friend-count');
+  var $chatModal = document.getElementById('chat-modal');
+  var $chatTitle = document.getElementById('chat-title');
+  var $chatBody = document.getElementById('chat-body');
+  var $chatInput = document.getElementById('chat-input');
+  var $chatSend = document.getElementById('chat-send-btn');
   var $friendResult = document.getElementById('friend-result');
   var $reqTitle = document.getElementById('req-title');
   var $reqCount = document.getElementById('req-count');
@@ -3262,8 +3288,29 @@
     $newName.placeholder = isGroup ? '例如：数学' : '例如：一元二次方程';
   }
 
+  /* 能力名全站唯一（不分分类、不区分大小写） */
+  function abilityNameTaken(name, exceptId) {
+    var key = String(name || '').trim().toLowerCase();
+    if (!key) return false;
+    return state.abilities.some(function (a) {
+      return a.kind === 'group' && a.id !== exceptId &&
+        String(a.name || '').trim().toLowerCase() === key;
+    });
+  }
+
+  /* 同名能力只保留一个选项，避免下拉里出现重复条目 */
+  function uniqueGroups() {
+    var seen = {};
+    return groups().filter(function (g) {
+      var k = String(g.name || '').trim().toLowerCase();
+      if (seen[k]) return false;
+      seen[k] = 1;
+      return true;
+    });
+  }
+
   function syncParentSelect() {
-    var gs = groups();
+    var gs = uniqueGroups();
     var prev = $newParent.value;
     $newParent.textContent = '';
     var none = el('option', '', '无（独立节点）');
@@ -3433,7 +3480,12 @@
     $relRow.hidden = isGroup;
     if (isGroup) return;
 
-    var gs = groups();
+    var gs = uniqueGroups();
+    // 若当前所属能力恰好是同名重复里的第二个，也要出现在列表里，避免显示成「无」
+    var cur = state.abilities.filter(function (a) {
+      return a.id === node.parentId && a.kind === 'group';
+    })[0];
+    if (cur && !gs.some(function (g) { return g.id === cur.id; })) gs = [cur].concat(gs);
     $editParent.textContent = '';
     var none = el('option', '', '无（独立节点）');
     none.value = '';
@@ -3817,6 +3869,11 @@
     if (!name) { toast('请输入名称', true); $newName.focus(); return; }
 
     if (createKind === 'group') {
+      if (abilityNameTaken(name, null)) {
+        toast('已经有同名能力了，换一个名字', true);
+        $newName.focus();
+        return;
+      }
       var gid = makeId();
       state.abilities.push({
         id: gid, name: name, cost: 0, unlocked: false, kind: 'group',
@@ -3852,9 +3909,15 @@
     if (!currentId) return;
     var node = findNode(currentId);
     if (!node) return;
-    node.name = $editName.value;
     if (nameTimer) clearTimeout(nameTimer);
     nameTimer = setTimeout(function () {
+      var next = $editName.value;
+      if (node.kind === 'group' && next.trim() && abilityNameTaken(next, node.id)) {
+        toast('已经有同名能力了，换一个名字', true);
+        $editName.value = node.name;
+        return;
+      }
+      node.name = next;
       $drawerTitle.textContent = node.name || '—';
       saveNow(); render();
       if (node.kind === 'group') syncParentSelect();
@@ -4914,6 +4977,10 @@
       }
       friendCache.forEach(function (f) {
         var row = friendRow(f.name, null, f.avatar);
+        var chat = el('button', 'btn-ghost', '聊天');
+        chat.type = 'button';
+        chat.setAttribute('data-chat-open', f.id);
+        chat.setAttribute('data-chat-name', f.name);
         var view = el('button', 'btn-primary', '看图谱');
         view.type = 'button';
         view.setAttribute('data-friend-view', f.id);
@@ -4922,6 +4989,7 @@
         del.type = 'button';
         del.setAttribute('data-friend-del', f.id);
         del.setAttribute('data-friend-del-name', f.name);
+        row.appendChild(chat);
         row.appendChild(view);
         row.appendChild(del);
         $friendList.appendChild(row);
@@ -4939,6 +5007,95 @@
       loadBpMine();
     }).catch(function () {});
   }
+
+  /* ---------------- 好友私聊 ---------------- */
+  var chatFriend = null;
+  var chatLastAt = 0;
+  var chatTimer = null;
+
+  function openChat(id, name) {
+    chatFriend = { id: id, name: name };
+    chatLastAt = 0;
+    $chatTitle.textContent = name;
+    $chatBody.textContent = '';
+    $chatInput.value = '';
+    $meModal.hidden = true;
+    $chatModal.hidden = false;
+    loadChat(true);
+    if (chatTimer) clearInterval(chatTimer);
+    chatTimer = setInterval(function () {
+      if (!$chatModal.hidden && chatFriend) loadChat(false);
+    }, 3000);
+    setTimeout(function () { try { $chatInput.focus(); } catch (e) {} }, 60);
+  }
+
+  function closeChat() {
+    $chatModal.hidden = true;
+    if (chatTimer) { clearInterval(chatTimer); chatTimer = null; }
+    chatFriend = null;
+    $meModal.hidden = false;
+  }
+
+  function chatBubble(m) {
+    var mine = currentUser && m.from === currentUser.id;
+    var b = el('div', 'chat-msg ' + (mine ? 'me' : 'other'));
+    b.textContent = m.text;
+    return b;
+  }
+
+  function loadChat(reset) {
+    if (!chatFriend) return;
+    var url = '/api/chat/' + encodeURIComponent(chatFriend.id) + (chatLastAt ? '?after=' + chatLastAt : '');
+    fetch(url, { cache: 'no-store' })
+      .then(function (r) { return r.json(); })
+      .then(function (res) {
+        if (!chatFriend) return;
+        if (res.friend && res.friend.name) $chatTitle.textContent = res.friend.name;
+        var list = res.messages || [];
+        if (!list.length) {
+          if (reset && !$chatBody.childNodes.length) {
+            $chatBody.appendChild(el('div', 'chat-empty', '还没有消息，打个招呼吧'));
+          }
+          return;
+        }
+        if (reset) $chatBody.textContent = '';
+        var empty = $chatBody.querySelector('.chat-empty');
+        if (empty) empty.remove();
+        list.forEach(function (m) {
+          $chatBody.appendChild(chatBubble(m));
+          chatLastAt = Math.max(chatLastAt, m.at || 0);
+        });
+        $chatBody.scrollTop = $chatBody.scrollHeight;
+      })
+      .catch(function () {});
+  }
+
+  function sendChat() {
+    if (!chatFriend) return;
+    var text = $chatInput.value.trim();
+    if (!text) return;
+    $chatInput.value = '';
+    fetch('/api/chat/' + encodeURIComponent(chatFriend.id), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: text })
+    }).then(function (r) {
+      return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || '发送失败'); return j; });
+    }).then(function (res) {
+      if (!res.message || !chatFriend) return;
+      var empty = $chatBody.querySelector('.chat-empty');
+      if (empty) empty.remove();
+      $chatBody.appendChild(chatBubble(res.message));
+      chatLastAt = Math.max(chatLastAt, res.message.at || 0);
+      $chatBody.scrollTop = $chatBody.scrollHeight;
+    }).catch(function (e) { toast(e.message || '发送失败', true); });
+  }
+
+  $chatSend.addEventListener('click', sendChat);
+  document.getElementById('chat-close').addEventListener('click', closeChat);
+  $chatInput.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); sendChat(); }
+  });
 
   function searchFriends() {
     var q = $friendInput.value.trim();
@@ -5065,6 +5222,9 @@
   $friendList.addEventListener('click', function (e) {
     var t = e.target;
     if (!(t instanceof Element)) return;
+
+    var chatBtn = t.closest('[data-chat-open]');
+    if (chatBtn) { openChat(chatBtn.getAttribute('data-chat-open'), chatBtn.getAttribute('data-chat-name')); return; }
 
     var viewBtn = t.closest('[data-friend-view]');
     if (viewBtn) { enterGuest(viewBtn.getAttribute('data-friend-view'), viewBtn.getAttribute('data-friend-name')); return; }

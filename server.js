@@ -36,6 +36,7 @@ const USERS_DIR = path.join(DATA_DIR, 'users');
 const BP_FILE = path.join(DATA_DIR, 'blueprints.json');
 const FRIENDS_FILE = path.join(DATA_DIR, 'friends.json');
 const FEEDBACK_FILE = path.join(DATA_DIR, 'feedback.json');
+const CHAT_FILE = path.join(DATA_DIR, 'chats.json');
 const BP_DIR = path.join(DATA_DIR, 'blueprints');
 const LEGACY_TREE = path.join(DATA_DIR, 'tree.json');
 const LEGACY_NOTES = path.join(DATA_DIR, 'notes');
@@ -182,6 +183,7 @@ let users = [];
 let sessions = {};
 let friends = [];
 let feedback = [];
+let chats = [];
 
 async function loadAuth() {
   users = await readJson(USERS_FILE, []);
@@ -190,6 +192,8 @@ async function loadAuth() {
   if (!Array.isArray(friends)) friends = [];
   feedback = await readJson(FEEDBACK_FILE, []);
   if (!Array.isArray(feedback)) feedback = [];
+  chats = await readJson(CHAT_FILE, []);
+  if (!Array.isArray(chats)) chats = [];
 
   // 保证系统里始终有一个管理员：没有就把最早注册的账号提升为管理员
   if (!users.some((u) => u.role === 'admin') && users.length) {
@@ -1665,6 +1669,46 @@ async function handleApi(req, res, url, user) {
     friends = friends.filter((f) => !((f.a === uid && f.b === targetId) || (f.b === uid && f.a === targetId)));
     if (friends.length !== before) await writeJson(FRIENDS_FILE, friends);
     return sendJson(res, 200, { ok: true });
+  }
+
+  /* ---------------- 好友私聊 ---------------- */
+  const chatMatch = p.match(/^\/api\/chat\/([^/]+)$/);
+  if (chatMatch) {
+    const otherId = chatMatch[1];
+    const other = users.find((u) => u.id === otherId);
+    if (!other) return fail(res, 404, '没有这个用户');
+    if (!areFriends(uid, otherId)) return fail(res, 403, '只能和好友聊天');
+
+    if (req.method === 'GET') {
+      const after = Number(url.searchParams.get('after') || 0) || 0;
+      const list = chats
+        .filter((m) => (m.from === uid && m.to === otherId) || (m.from === otherId && m.to === uid))
+        .filter((m) => m.at > after)
+        .sort((a, b) => a.at - b.at)
+        .slice(-200)
+        .map((m) => ({ id: m.id, from: m.from, text: m.text, at: m.at }));
+      return sendJson(res, 200, {
+        messages: list,
+        friend: { id: other.id, name: displayNameOf(other), avatar: typeof other.avatar === 'string' ? other.avatar : '' }
+      });
+    }
+
+    if (req.method === 'POST') {
+      if (hitsKey('chat:' + uid, 120, 10 * 60 * 1000)) {
+        return fail(res, 429, '发得太快了，歇一会儿再发');
+      }
+      let body;
+      try { body = JSON.parse((await readBody(req)).toString('utf8') || '{}'); }
+      catch (e) { return fail(res, 400, '请求格式有误'); }
+      const text = String(body.text || '').trim().slice(0, 1000);
+      if (!text) return fail(res, 400, '消息不能为空');
+
+      const msg = { id: newId('m'), from: uid, to: otherId, text: text, at: Date.now() };
+      chats.push(msg);
+      if (chats.length > 5000) chats = chats.slice(-4000);
+      await writeJson(CHAT_FILE, chats);
+      return sendJson(res, 200, { message: { id: msg.id, from: msg.from, text: msg.text, at: msg.at } });
+    }
   }
 
   const friendTree = p.match(/^\/api\/users\/([^/]+)\/tree$/);
