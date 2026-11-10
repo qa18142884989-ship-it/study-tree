@@ -921,6 +921,117 @@
     0%,100%{box-shadow:0 0 0 0 rgba(245,185,66,0)}
     50%{box-shadow:0 0 22px -6px rgba(245,185,66,.45)}
   }
+
+  /* ============ 移动端适配 ============ */
+  .btn-more{display:none}
+  .brand{flex:0 0 auto}
+  .brand-name{white-space:nowrap}
+  .sheet{position:fixed;inset:0;z-index:120;display:flex;align-items:flex-end}
+  .sheet[hidden]{display:none}
+  .sheet-mask{position:absolute;inset:0;background:rgba(3,6,12,.66)}
+  .sheet-box{
+    position:relative;width:100%;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;
+    padding:8px 12px calc(14px + env(safe-area-inset-bottom));
+    background:#0c1524;border-top:1px solid rgba(122,152,200,.2);
+    border-radius:18px 18px 0 0;box-shadow:0 -18px 40px rgba(0,0,0,.55);
+  }
+  .sheet-handle{grid-column:1/-1;width:38px;height:4px;border-radius:2px;background:rgba(122,152,200,.3);margin:2px auto 6px}
+  .sheet-box button{
+    display:flex;flex-direction:column;align-items:center;gap:5px;padding:11px 4px;
+    border-radius:11px;background:rgba(122,152,200,.08);border:1px solid rgba(122,152,200,.14);
+    color:#cfe0f5;font-size:12px;
+  }
+  .sheet-box button b{font-size:15px;color:#9fe1cb}
+
+  @media (min-width:1101px){ .sheet{display:none} }
+
+  /* 1024 以下（含平板）顶栏太挤：收进「⋯」面板 */
+  @media (max-width:1100px){
+    .btn-io{display:none}
+    .btn-more{
+      display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;
+      width:34px;height:34px;border-radius:10px;font-size:17px;line-height:1;
+      background:rgba(122,152,200,.1);border:1px solid rgba(122,152,200,.2);color:#cfe0f5;
+    }
+  }
+
+  @media (max-width:760px){
+    .topbar{height:54px}
+    .topbar-inner{padding:0 8px;gap:6px}
+    .brand-name{font-size:12.5px}
+    .points-label{display:none}
+    .points-pill{padding:4px 9px;gap:4px}
+    .points-pill strong{font-size:17px}
+    .points-cap{font-size:10.5px}
+    .btn-io{display:none}
+    .btn-more{
+      display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;
+      width:34px;height:34px;border-radius:10px;font-size:17px;line-height:1;
+      background:rgba(122,152,200,.1);border:1px solid rgba(122,152,200,.2);color:#cfe0f5;
+    }
+    #btn-new{padding:7px 10px;font-size:12px}
+    .user-chip{max-width:104px;padding:5px 8px;font-size:11.5px}
+
+    .cats{
+      left:0;right:0;top:54px;bottom:auto;width:auto;height:42px;
+      flex-direction:row;gap:5px;padding:5px 8px;
+      overflow-x:auto;overflow-y:hidden;border-right:0;
+      border-bottom:1px solid rgba(122,152,200,.12);
+    }
+    #cat-list{flex-direction:row;gap:5px}
+    .cat-item{flex:0 0 auto;width:auto;padding:5px 8px;font-size:11.5px;gap:5px}
+    .cat-n{display:none}
+    .cat-add{margin-top:0;margin-left:auto;flex:0 0 auto;padding:5px 8px;font-size:11.5px}
+    .cat-name{max-width:64px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+    .rail{
+      left:0;right:0;top:96px;bottom:auto;width:auto;height:140px;padding:6px 8px;
+      border-right:0;border-bottom:1px solid rgba(122,152,200,.14);
+      white-space:nowrap;overflow-x:auto;overflow-y:hidden;
+    }
+    .rail-item{width:172px}
+    .rail-item .card{min-height:0;padding:9px 10px}
+    .rail-item .card-name{font-size:12px}
+
+    .stage{left:0;top:236px}
+    #links{left:0;top:236px;height:calc(100dvh - 236px)}
+    .banner{top:54px}
+
+    body.guest-mode .cats{top:calc(54px + var(--guest-h, 44px))}
+    body.guest-mode .rail{top:calc(96px + var(--guest-h, 44px))}
+    body.guest-mode .stage{top:calc(236px + var(--guest-h, 44px))}
+    body.guest-mode #links{
+      top:calc(236px + var(--guest-h, 44px));
+      height:calc(100dvh - 236px - var(--guest-h, 44px));
+    }
+
+    .drawer{top:54px;width:100%;max-width:100%}
+    .drawer-body{padding-bottom:calc(18px + env(safe-area-inset-bottom))}
+
+    .modal{padding:0;align-items:flex-end}
+    .modal-box{
+      max-width:100%!important;width:100%;max-height:92dvh;
+      border-radius:16px 16px 0 0;padding:16px 14px calc(16px + env(safe-area-inset-bottom));
+    }
+    .admin-head h3{font-size:15px}
+    .doc-wrap{max-height:74dvh}
+
+    .me-nick{gap:6px}
+    .me-nick input{min-width:0}
+    .me-nick button{flex:0 0 auto;white-space:nowrap;padding:8px 10px;font-size:12px}
+    .tt-body{max-height:44dvh}
+
+    .field input,.field select,.field textarea,
+    .auth-box input,.timer-add input,.timer-add select,
+    .chat-send input,.add-friend input{font-size:16px}
+
+    .tt-wrap{overflow-x:auto;overflow-y:hidden}
+    .tt-days,.tt-body{min-width:520px}
+
+    .chat-body{height:min(52dvh,320px)}
+    .timer-hero{grid-template-columns:repeat(2,1fr)}
+    .tasks{left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom))}
+  }
 </style>
 </head>
 <body>
@@ -949,6 +1060,7 @@
       <button class="btn-io" id="btn-export" type="button" title="把整棵学习树导出成一个文件"><b>↓</b>导出</button>
       <button class="btn-io" id="btn-import" type="button" title="导入别人的学习树文件"><b>↑</b>导入</button>
       <button class="btn-io" id="btn-feedback" type="button" title="意见反馈：只有管理员能看到内容"><b>✎</b>反馈</button>
+      <button class="btn-more" id="btn-more" type="button" title="更多功能" aria-label="更多功能">⋯</button>
       <button class="btn-primary" id="btn-new" type="button">＋ 新增</button>
       <button class="user-chip" id="user-chip" type="button" title="当前账号">
         <span class="u-dot"></span><span id="user-name">—</span>
@@ -957,6 +1069,19 @@
     </div>
   </div>
 </header>
+
+<div class="sheet" id="tool-sheet" hidden>
+  <div class="sheet-mask" data-sheet-close></div>
+  <div class="sheet-box">
+    <div class="sheet-handle"></div>
+    <button type="button" data-sheet-act="btn-timer"><b>◷</b>时间规划</button>
+    <button type="button" data-sheet-act="btn-bp"><b>◈</b>蓝图</button>
+    <button type="button" data-sheet-act="btn-doc"><b>?</b>使用说明</button>
+    <button type="button" data-sheet-act="btn-export"><b>↓</b>导出</button>
+    <button type="button" data-sheet-act="btn-import"><b>↑</b>导入</button>
+    <button type="button" data-sheet-act="btn-feedback"><b>✎</b>反馈</button>
+  </div>
+</div>
 
 <div class="auth" id="auth" hidden>
   <div class="auth-box">
@@ -2484,7 +2609,7 @@
     });
     if (!arr.length) return;
 
-    if (window.innerWidth <= 620) {
+    if (window.innerWidth <= 760) {
       var left = 12;
       arr.forEach(function (x) {
         var w = x.el.offsetWidth || 212;
@@ -4487,8 +4612,11 @@
   });
 
   var resizeTimer = null;
+  var lastNarrow = window.innerWidth <= 760;
   window.addEventListener('resize', function () {
     applyView();
+    var narrow = window.innerWidth <= 760;
+    if (narrow !== lastNarrow) { lastNarrow = narrow; render(); }
     if (resizeTimer) clearTimeout(resizeTimer);
     resizeTimer = setTimeout(function () { fitView(); }, 180);
   });
@@ -5190,6 +5318,7 @@
       $meModal.hidden = true;
       $drawer.hidden = true;
       $guestBar.hidden = false;
+      document.body.style.setProperty('--guest-h', ($guestBar.offsetHeight || 44) + 'px');
       document.body.classList.add('guest-mode');
       $guestText.textContent = '正在查看 ' + res.user.name + ' 的图谱 · 只能查看，不能修改';
       setTopbarIdentity(res.user);
@@ -6202,6 +6331,29 @@
 
   document.getElementById('btn-doc').addEventListener('click', openDoc);
   document.getElementById('doc-close').addEventListener('click', function () { $docModal.hidden = true; });
+
+  /* ---------------- 移动端「更多」面板：把桌面顶栏的按钮收进底部弹层 ---------------- */
+  var $btnMore = document.getElementById('btn-more');
+  var $toolSheet = document.getElementById('tool-sheet');
+
+  function closeToolSheet() { if ($toolSheet) $toolSheet.hidden = true; }
+
+  if ($btnMore && $toolSheet) {
+    $btnMore.addEventListener('click', function (e) {
+      e.stopPropagation();
+      $toolSheet.hidden = !$toolSheet.hidden;
+    });
+    $toolSheet.addEventListener('click', function (e) {
+      var t = e.target;
+      if (!(t instanceof Element)) return;
+      if (t.hasAttribute('data-sheet-close') || t === $toolSheet) { closeToolSheet(); return; }
+      var b = t.closest('[data-sheet-act]');
+      if (!b) return;
+      closeToolSheet();
+      var src = document.getElementById(b.getAttribute('data-sheet-act'));
+      if (src) src.click();
+    });
+  }
 
   /* ---------------- 蓝图：市场 / 我的蓝图库 ---------------- */
   var BP_CATS = [
