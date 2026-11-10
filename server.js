@@ -50,6 +50,10 @@ const STATIC_FILES = new Set(['/index.html', '/favicon.ico', '/robots.txt']);   
 const STARTED_AT = Date.now();
 const HOST = process.env.HOST || '127.0.0.1';
 const MAX_BODY = 64 * 1024 * 1024;
+/* 单棵树的数据规模上限：防止登录用户塞超大结构放大内存/磁盘 */
+const MAX_ABILITIES = 3000;
+const MAX_FILES = 6000;
+const MAX_TASKS = 200;
 const VERSION = 7;
 const INITIAL_POINTS = 10;
 const SESSION_DAYS = 30;
@@ -164,10 +168,18 @@ async function readJson(file, fallback) {
   }
 }
 
-async function writeJson(file, obj) {
-  const tmp = file + '.tmp';
-  await fsp.writeFile(tmp, JSON.stringify(obj, null, 2), 'utf8');
-  await fsp.rename(tmp, file);
+/* 按文件串行化写盘：避免并发写同一个文件共用 .tmp 导致 rename 失败 / 互相覆盖 */
+const writeQueues = new Map();
+
+function writeJson(file, obj) {
+  const prev = writeQueues.get(file) || Promise.resolve();
+  const next = prev.catch(() => {}).then(async () => {
+    const tmp = file + '.tmp';
+    await fsp.writeFile(tmp, JSON.stringify(obj, null, 2), 'utf8');
+    await fsp.rename(tmp, file);
+  });
+  writeQueues.set(file, next);
+  return next;
 }
 
 async function ensureDirs() {
@@ -209,8 +221,14 @@ async function loadAuth() {
   if (dirty) await writeJson(SESSIONS_FILE, sessions);
 }
 
+/* 异步哈希：scrypt 是 CPU 密集型，同步会阻塞事件循环（登录/注册/改密码时全站卡一下） */
 function hashPassword(password, salt) {
-  return crypto.scryptSync(password, salt, 64).toString('hex');
+  return new Promise((resolve, reject) => {
+    crypto.scrypt(password, salt, 64, (err, key) => {
+      if (err) return reject(err);
+      resolve(key.toString('hex'));
+    });
+  });
 }
 
 function findUserByName(name) {
@@ -544,6 +562,7 @@ function sanitizeTree(raw) {
     seen.add(node.id);
     list.push(node);
   });
+  if (list.length > MAX_ABILITIES) list.length = MAX_ABILITIES;
 
   const groupIds = new Set(list.filter((a) => a.kind === 'group').map((a) => a.id));
   list.forEach((a) => {
@@ -596,12 +615,13 @@ function sanitizeTree(raw) {
       createdAt: isFinite(Number(f.createdAt)) ? Math.floor(Number(f.createdAt)) : Date.now()
     });
   });
-  tree.files = files;
+  tree.files = files.length > MAX_FILES ? files.slice(0, MAX_FILES) : files;
 
   const exp = Number(raw.exp);
   tree.exp = isFinite(exp) ? Math.max(0, Math.min(1500, Math.floor(exp))) : 0;
 
-  tree.tasks = (Array.isArray(raw.tasks) ? raw.tasks : []).map(normalizeTask).filter(Boolean);
+  const tasks = (Array.isArray(raw.tasks) ? raw.tasks : []).map(normalizeTask).filter(Boolean);
+  tree.tasks = tasks.length > MAX_TASKS ? tasks.slice(0, MAX_TASKS) : tasks;
   tree.week = (raw.week && typeof raw.week === 'object' && typeof raw.week.key === 'string')
     ? { key: raw.week.key.slice(0, 20) }
     : { key: '' };
@@ -814,7 +834,7 @@ async function handleAuth(req, res, url) {
       id: newId('u'),
       name: name,
       salt: salt,
-      hash: hashPassword(password, salt),
+      hash: await hashPassword(password, salt),
       createdAt: Date.now(),
       role: users.some((u) => u.role === 'admin') ? 'user' : 'admin',
       lastLoginAt: Date.now()
@@ -871,7 +891,7 @@ async function handleAuth(req, res, url) {
       hitsKey(userKey, 5, 10 * 60 * 1000);
       return fail(res, 401, '用户名或密码不对');
     }
-    const hash = hashPassword(String(body.password || ''), user.salt);
+    const hash = await hashPassword(String(body.password || ''), user.salt);
     if (hash.length !== user.hash.length || !crypto.timingSafeEqual(Buffer.from(hash), Buffer.from(user.hash))) {
       const badIp = hitsKey(ipKey, 20, 10 * 60 * 1000);
       const badUser = hitsKey(userKey, 5, 10 * 60 * 1000);
@@ -912,14 +932,14 @@ async function handleAuth(req, res, url) {
     const me = currentUser(req);
     if (!me) return fail(res, 401, '请先登录');
 
-    const oldHash = hashPassword(oldPass, me.salt);
+    const oldHash = await hashPassword(oldPass, me.salt);
     if (oldHash.length !== me.hash.length || !crypto.timingSafeEqual(Buffer.from(oldHash), Buffer.from(me.hash))) {
       return fail(res, 401, '旧密码不对');
     }
 
     const salt = crypto.randomBytes(16).toString('hex');
     me.salt = salt;
-    me.hash = hashPassword(newPass, salt);
+    me.hash = await hashPassword(newPass, salt);
     me.passwordChangedAt = Date.now();
     await writeJson(USERS_FILE, users);
 
@@ -2074,6 +2094,15 @@ async function start(port, attempt = 0) {
     openUrl(local);
   }, () => start(port + 1, attempt + 1));
 }
+
+/* 进程级兜底：避免一次未捕获异常 / 未处理的 Promise 拒绝让整站直接退出 */
+process.on('unhandledRejection', (reason) => {
+  console.error('[study-tree] 未处理的 Promise 拒绝：', reason && reason.stack ? reason.stack : reason);
+});
+process.on('uncaughtException', (err) => {
+  console.error('[study-tree] 未捕获异常，进程即将退出（由 systemd/守护进程重启）：', err && err.stack ? err.stack : err);
+  setTimeout(() => process.exit(1), 500);
+});
 
 (async () => {
   try {
