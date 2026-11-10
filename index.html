@@ -2664,7 +2664,18 @@
     });
   }
 
+  /* 合并重绘：同一帧内多次 render() 只执行一次真正的 renderNow() */
+  var renderQueued = false;
   function render() {
+    if (renderQueued) return;
+    renderQueued = true;
+    requestAnimationFrame(function () {
+      renderQueued = false;
+      renderNow();
+    });
+  }
+
+  function renderNow() {
     syncPoints();
     renderCats();
 
@@ -4028,7 +4039,7 @@
     $newName.focus();
   });
 
-  var nameTimer = null, noteTimer = null;
+  var nameTimer = null, noteTimer = null, costTimer = null, rateTimer = null;
 
   $editName.addEventListener('input', function () {
     if (!currentId) return;
@@ -4056,7 +4067,12 @@
     var raw = $editCost.value.trim();
     if (!/^\d+$/.test(raw) || Number(raw) < 1) return;
     node.cost = Number(raw);
-    saveNow(); render(); syncDrawer();
+    $saveState.textContent = '正在保存…';
+    if (costTimer) clearTimeout(costTimer);
+    costTimer = setTimeout(function () {
+      saveNow(); render(); syncDrawer();
+      $saveState.textContent = '已保存';
+    }, 300);
   });
 
   $editNote.addEventListener('input', function () {
@@ -6192,7 +6208,8 @@
     timerOf().rate = v;
     $timerRateVal.textContent = v + '%';
     syncPoints();
-    saveNow();
+    if (rateTimer) clearTimeout(rateTimer);
+    rateTimer = setTimeout(function () { saveNow(); }, 300);
   });
 
   document.getElementById('tc-add').addEventListener('click', function () {
