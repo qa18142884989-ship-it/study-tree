@@ -66,6 +66,7 @@
     background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.32);
   }
   .points-label{font-size:11px;letter-spacing:.14em;color:#79a795}
+  .points-cap{font-family:var(--mono);font-size:11.5px;color:#6f8a80;letter-spacing:.02em}
   .points-pill strong{
     font-size:20px;line-height:1;font-weight:600;color:var(--mint-soft);
     font-variant-numeric:tabular-nums;text-shadow:0 0 16px rgba(52,211,153,.45);
@@ -827,6 +828,7 @@
     .topbar-inner{padding:0 10px;gap:8px}
     .points-pill{padding:5px 10px}
     .points-pill strong{font-size:17px}
+    .points-cap{font-size:10.5px}
     .user-chip{max-width:96px;padding:6px 9px}
     .btn-primary{padding:7px 11px;font-size:12px}
     .cats{left:0;right:0;top:56px;bottom:auto;width:auto;height:46px;flex-direction:row;gap:6px;
@@ -915,9 +917,10 @@
         <div class="pc-track"><div class="pc-fill" id="hud-fill"></div></div>
         <b class="pc-pct" id="hud-pct">0%</b>
       </div>
-      <div class="points-pill" title="本周可用科技点：按空闲时间 × 转化率实时计算">
+      <div class="points-pill" title="当前可用 / 本周总量（本周总量 = 整周空闲时间 × 转化率，周一一次性到账）">
         <span class="points-label">科技点</span>
         <strong id="points">10</strong>
+        <span class="points-cap" id="points-cap">/ 10</span>
       </div>
       <button class="btn-io" id="btn-timer" type="button" title="课表 / 日常规划 / 科技点转化"><b>◷</b>时间</button>
       <button class="btn-io" id="btn-doc" type="button" title="使用说明"><b>?</b>说明</button>
@@ -1300,12 +1303,12 @@
     <div class="timer-sub" id="timer-sub"></div>
 
     <div class="field">
-      <label for="timer-rate">转化率：空闲时间 → 科技点</label>
+      <label for="timer-rate">转化率：整周空闲 → 科技点</label>
       <div class="timer-rate-row">
         <input id="timer-rate" type="range" min="0" max="100" step="1">
         <b id="timer-rate-val">50%</b>
       </div>
-      <p class="hint">例：一天 12 小时可安排时间、转化率 50% → 6 个科技点</p>
+      <p class="hint">整周空闲（默认 7 × 12h = 84h）× 转化率 = 本周总量，<b>周一一次性到账</b>。例：84h × 50% = 42 点。</p>
     </div>
 
     <div class="timer-sec">
@@ -1569,6 +1572,7 @@
 
   /* ---------------- DOM ---------------- */
   var $points = document.getElementById('points');
+  var $pointsCap = document.getElementById('points-cap');
   var $stage = document.getElementById('stage');
   var $world = document.getElementById('world');
   var $hudPct = document.getElementById('hud-pct');
@@ -4014,7 +4018,9 @@
     return total;
   }
 
-  /* 汇总：本周总空闲 / 剩余空闲 / 已赚 / 倒计时 / 可用 */
+  /* 汇总：本周总空闲 / 剩余空闲 / 本周总量 / 可用
+     发放模型＝整周一次性到账：周一 00:00 就把「整周空闲 × 转化率」全部记入余额，
+     本周内只扣不增（任务奖励另加），下周一自动重置。 */
   function timerStats(now) {
     now = now || Date.now();
     var ws = weekStartTs(now);
@@ -4047,7 +4053,10 @@
       earned: earned,
       bonus: bonus,
       spent: spent,
-      available: Math.max(0, earned + bonus - spent),
+      /* 整周一次性到账：本周总量 + 奖励 − 已用 */
+      available: Math.max(0, total + bonus - spent),
+      /* 本周剩余时间（含非可安排时段），供面板倒计时 */
+      leftMs: Math.max(0, we - now),
       rate: Number(t.rate) || 0,
       weekStart: ws,
       weekEnd: we
@@ -4059,11 +4068,25 @@
     return Math.abs(v - Math.round(v)) < 0.05 ? String(Math.round(v)) : v.toFixed(1);
   }
 
+  /* 毫秒 → 剩余时间文案：有整天用「3天 04:12:09」，否则「04:12:09」 */
+  function fmtCountdown(ms) {
+    var total = Math.max(0, Math.floor((Number(ms) || 0) / 1000));
+    var d = Math.floor(total / 86400);
+    var h = Math.floor((total % 86400) / 3600);
+    var m = Math.floor((total % 3600) / 60);
+    var s = total % 60;
+    var p = function (x) { return x < 10 ? '0' + x : '' + x; };
+    var clock = p(h) + ':' + p(m) + ':' + p(s);
+    return d > 0 ? d + '天 ' + clock : clock;
+  }
+
   /* 把计算出的可用科技点同步到 state.points 和顶栏 */
   function syncPoints() {
     var st = timerStats();
     state.points = Math.round(st.available * 10) / 10;
     if ($points) $points.textContent = fmtPoint(state.points);
+    /* 顶栏显示「当前可用 / 本周总量」，让人一眼看出总量与余额的差别 */
+    if ($pointsCap) $pointsCap.textContent = '/ ' + fmtPoint(st.total);
     if ($timerModal && !$timerModal.hidden && $timerHero) {
       updateTimerHero(st);
       updateNowLine();
@@ -4228,7 +4251,7 @@
 
     saveNow(); render(); renderTasks();
     $weekText.textContent = '上周（' + oldKey + '）已经结束：周常任务全部重置，' +
-      '新一周（' + key + '）按空闲时间重新计算，当前可用 ' + fmtPoint(fresh.available) +
+      '新一周（' + key + '）的科技点按整周空闲一次性到账，当前可用 ' + fmtPoint(fresh.available) +
       ' 科技点（上周结束时是 ' + fmtPoint(before) + '）。';
     $weekModal.hidden = false;
   }
@@ -5097,9 +5120,10 @@
     loadFriends();
   }, 60000);
 
-  // 科技点倒计时：每秒按「本周剩余空闲时间 × 转化率」重算一次
+  // 每秒重算：刷新「距周结束」倒计时，同时兜住跨周重置
   setInterval(function () {
     if (document.hidden || readOnly || !currentUser) return;
+    checkWeek();
     syncPoints();
   }, 1000);
 
@@ -5661,12 +5685,13 @@
       return d;
     }
     $timerHero.appendChild(cell('本周空闲', fmtPoint(st.totalHours) + ' h'));
-    $timerHero.appendChild(cell('剩余空闲', fmtPoint(st.remainHours) + ' h'));
-    $timerHero.appendChild(cell('倒计时·剩余可转化', fmtPoint(st.remain) + ' 点', 'warn'));
-    $timerHero.appendChild(cell('当前可用科技点', fmtPoint(st.available) + ' 点', 'hot'));
+    $timerHero.appendChild(cell('本周总量', fmtPoint(st.total) + ' 点'));
+    $timerHero.appendChild(cell('当前可用', fmtPoint(st.available) + ' 点', 'hot'));
+    $timerHero.appendChild(cell('距周结束', fmtCountdown(st.leftMs), 'warn'));
     if ($timerSub) {
-      $timerSub.textContent = '本周总 ' + fmtPoint(st.total) + ' 点 · 已赚 ' + fmtPoint(st.earned) +
-        ' · 已用 ' + fmtPoint(st.spent) + ' · 任务奖励 ' + fmtPoint(st.bonus);
+      $timerSub.textContent = '整周一次性到账：总量 ' + fmtPoint(st.total) + ' 点 · 已用 ' +
+        fmtPoint(st.spent) + ' · 任务奖励 ' + fmtPoint(st.bonus) +
+        ' · 剩余空闲 ' + fmtPoint(st.remainHours) + ' h';
     }
     if (document.activeElement !== $timerRate) $timerRate.value = String(st.rate);
     $timerRateVal.textContent = st.rate + '%';
