@@ -478,7 +478,7 @@
     overflow:hidden;
   }
   .tasks-head{
-    width:100%;display:flex;align-items:center;gap:8px;
+    width:100%;display:flex;align-items:center;gap:7px;white-space:nowrap;
     padding:10px 12px;background:none;border:0;color:#c3d2e8;text-align:left;
     font-size:12px;letter-spacing:.05em;cursor:pointer;
   }
@@ -486,10 +486,6 @@
   .tasks-head .wk{font-family:var(--mono);font-size:10px;color:#5d7090;letter-spacing:.1em}
   .tasks-head .cnt{margin-left:auto;font-family:var(--mono);font-size:11px;color:#7fd8b4}
   .tasks-head .chev{font-size:9px;color:#4f6480;transition:transform .16s}
-  .tasks-lock{font-family:var(--mono);font-size:9px;color:#93a5c0;background:rgba(122,152,200,.14);border-radius:999px;padding:1px 6px;margin-left:2px}
-  .tasks.is-locked .task-check,.tasks.is-locked .task-edit{opacity:.3;pointer-events:none}
-  .tasks.is-locked .tasks-foot{display:none}
-  .tasks.is-locked .task{cursor:default}
   .tasks.open .tasks-head .chev{transform:rotate(180deg)}
   .tasks-body{display:none;padding:0 10px 10px}
   .tasks.open .tasks-body{display:block}
@@ -1226,12 +1222,11 @@
   <button id="zoom-fit" type="button" aria-label="适应画布" title="适应画布">⤢</button>
 </div>
 
-<div class="tasks" id="tasks">
+<div class="tasks" id="tasks" hidden>
   <button class="tasks-head" id="tasks-head" type="button">
     <span>本周任务</span>
     <span class="wk" id="tasks-week">—</span>
     <span class="cnt" id="tasks-count">0 / 0</span>
-    <span class="tasks-lock" id="tasks-lock" hidden>仅管理员</span>
     <span class="chev">▲</span>
   </button>
   <div class="tasks-body">
@@ -1891,7 +1886,6 @@
   var $tasksEmpty = document.getElementById('tasks-empty');
   var $tasksCount = document.getElementById('tasks-count');
   var $tasksWeek = document.getElementById('tasks-week');
-  var $tasksLock = document.getElementById('tasks-lock');
   var $taskModal = document.getElementById('task-modal');
   var $taskModalTitle = document.getElementById('task-modal-title');
   var $taskName = document.getElementById('task-name');
@@ -4466,18 +4460,20 @@
     return null;
   }
 
+  /* 本周任务只给管理员：非管理员（含访客）直接隐藏整个面板 */
   function renderTasks() {
+    var admin = !!(currentUser && currentUser.admin);
+    $tasks.hidden = !admin || readOnly;
+    if ($tasks.hidden) return;
+
     var list = state.tasks || [];
     var done = list.filter(function (t) { return t.done; }).length;
-    var admin = !!(currentUser && currentUser.admin);
-
-    $tasks.classList.toggle('is-locked', !admin);
-    if ($tasksLock) $tasksLock.hidden = admin;
 
     $tasksCount.textContent = done + ' / ' + list.length;
     $tasksWeek.textContent = state.week && state.week.key
       ? state.week.key.replace(/^(\d{4})W/, '$1·W') : '—';
     $tasksEmpty.hidden = list.length > 0;
+    $tasksEmpty.textContent = '还没有任务，点下面新建一条';
 
     $taskList.textContent = '';
     list.forEach(function (t) {
