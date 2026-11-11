@@ -6801,29 +6801,38 @@
   $ttPrev.addEventListener('click', function () { ttSelectedKey = null; ttListTitle = null; ttWeekOffset--; renderTimetable(); });
   $ttNext.addEventListener('click', function () { ttSelectedKey = null; ttListTitle = null; ttWeekOffset++; renderTimetable(); });
 
-  /* 删除一条课表安排（带确认） */
-  function ttDelete(v) {
+  /* 删除一条课表安排（带确认）；day 表示只删跨天计划里的某一天 */
+  function ttDelete(id, day) {
     if (readOnly) return;
-    var kind = v.charAt(0);
-    var id = v.slice(2);
+    var kind = id.charAt(0);
+    var nid = id.slice(2);
     var sc = scheduleOf(weekKey(new Date(ttWeekStart(ttWeekOffset))));
     if (kind === 'c') {
       var c = null;
-      sc.courses.forEach(function (x) { if (x.id === id) c = x; });
+      sc.courses.forEach(function (x) { if (x.id === nid) c = x; });
       if (!c) return;
       askConfirm('删除「' + c.title + '」？', '只从这周课表里移除，已点亮的节点不受影响。', '删除').then(function (yes) {
         if (!yes) return;
-        sc.courses = sc.courses.filter(function (x) { return x.id !== id; });
+        sc.courses = sc.courses.filter(function (x) { return x.id !== nid; });
         ttPicked = null; ttSelectedKey = null;
         syncPoints(); saveNow(); render(); renderTimetable();
       });
     } else {
       var p = null;
-      sc.plans.forEach(function (x) { if (x.id === id) p = x; });
+      sc.plans.forEach(function (x) { if (x.id === nid) p = x; });
       if (!p) return;
-      askConfirm('删除「' + p.title + '」？', '会从选中的所有星期里一起移除。', '删除').then(function (yes) {
+      var days = p.days || [];
+      var onlyDay = day != null && days.length > 1;
+      var tip = onlyDay
+        ? '只移除「' + DAY_NAMES[day] + '」这一天的这段，其他星期保持不变。'
+        : '会从选中的所有星期里一起移除。';
+      askConfirm('删除「' + p.title + '」？', tip, '删除').then(function (yes) {
         if (!yes) return;
-        sc.plans = sc.plans.filter(function (x) { return x.id !== id; });
+        if (onlyDay) {
+          p.days = days.filter(function (d) { return d !== day; });
+        } else {
+          sc.plans = sc.plans.filter(function (x) { return x.id !== nid; });
+        }
         ttPicked = null; ttSelectedKey = null;
         syncPoints(); saveNow(); render(); renderTimetable();
       });
@@ -6945,7 +6954,10 @@
   var $ttDelSel = document.getElementById('tt-del-sel');
   $ttDelSel.addEventListener('click', function () {
     if (!ttSelectedKey) return;
-    ttDelete(ttSelectedKey.slice(ttSelectedKey.indexOf('|') + 1));
+    var sep = ttSelectedKey.indexOf('|');
+    var day = Number(ttSelectedKey.slice(0, sep));
+    var id = ttSelectedKey.slice(sep + 1);
+    ttDelete(id, day);
   });
 
   function openTimer() {
