@@ -207,6 +207,20 @@
   }
   .zoom button:hover{color:#fff;border-color:rgba(122,152,200,.4)}
 
+  /* ---------- Ctrl+点 选中的节点 + 底部删除条 ---------- */
+  .card.is-sel{outline:2px solid #f59e0b;outline-offset:2px;box-shadow:0 0 18px -4px rgba(245,158,11,.55) !important}
+  .sel-bar{
+    position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:50;
+    display:flex;align-items:center;gap:10px;padding:8px 12px;
+    border-radius:12px;background:rgba(10,17,29,.92);
+    -webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
+    border:1px solid rgba(245,158,11,.35);
+    box-shadow:0 12px 30px -14px rgba(0,0,0,.8);
+  }
+  .sel-bar span{font-size:12.5px;color:#ffd9a0;white-space:nowrap}
+  .sel-bar .btn-ghost{font-size:11.5px;padding:6px 10px}
+  .sel-bar .btn-danger{font-size:11.5px;padding:6px 10px}
+
   /* ---------- 抽屉 ---------- */
   .drawer{
     position:fixed;top:56px;right:0;bottom:0;width:392px;max-width:94vw;z-index:60;
@@ -420,6 +434,22 @@
   .btn-io b{font-weight:400;font-size:13px;line-height:1;color:#7fb8d8}
   .io-row{display:flex;gap:8px;margin:0 0 10px}
   .io-row button{flex:1 1 0;text-align:center}
+
+  /* ---------- 右缘竖排工具条（导入 / 导出 / 说明 / 反馈） ---------- */
+  .side-tools{
+    position:fixed;right:0;top:50%;transform:translateY(-50%);z-index:40;
+    display:flex;flex-direction:column;gap:3px;
+    padding:6px 4px;
+    background:rgba(10,17,29,.88);
+    -webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
+    border:1px solid rgba(122,152,200,.18);border-right:0;
+    border-radius:10px 0 0 10px;
+  }
+  .side-tools .btn-io{
+    flex-direction:column;align-items:center;justify-content:center;gap:3px;
+    padding:7px 8px;min-width:54px;border:0;font-size:10px;letter-spacing:.02em;
+  }
+  .side-tools .btn-io b{font-size:14px}
 
   .banner{
     position:fixed;top:56px;left:0;right:0;z-index:45;
@@ -658,6 +688,8 @@
   /* ---------- 管理员 / 反馈 ---------- */
   .me-acts{display:flex;gap:8px;margin-top:14px}
   .me-acts button{flex:1 1 0;font-size:12px;padding:8px 6px}
+  .me-inline-acts{display:flex;gap:6px;align-items:center}
+  .me-inline-acts button{font-size:11px;padding:4px 9px;white-space:nowrap}
   .me-role{
     display:inline-block;margin-left:7px;padding:2px 7px;border-radius:999px;
     font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;vertical-align:2px;
@@ -787,6 +819,16 @@
   .tt-block:hover{filter:brightness(1.15)}
   .tt-block.plan{background:rgba(143,168,201,.10) !important;border:1px dashed rgba(143,168,201,.55);color:#b7c8dd}
   .tt-block.plan b{font-weight:400}
+  .tt-block.break{background:rgba(250,204,21,.10) !important;border:1px dashed rgba(250,204,21,.55);color:#e6c84f}
+  .tt-block.hl{outline:2px solid #38bdf8;outline-offset:1px;box-shadow:0 0 12px rgba(56,189,248,.35);filter:brightness(1.2)}
+  .tt-block.pick{outline:2px solid #f59e0b;outline-offset:1px;box-shadow:0 0 12px rgba(245,158,11,.4)}
+  .tt-x{position:absolute;top:2px;right:2px;width:15px;height:15px;line-height:14px;text-align:center;border-radius:50%;
+    background:rgba(10,14,22,.55);color:#e8eef8;font-size:11px;opacity:0;transition:opacity .12s;cursor:pointer;padding:0;border:0;z-index:3}
+  .tt-block:hover .tt-x{opacity:1}
+  .tt-x:hover{background:#e0443f;color:#fff}
+  #timer-modal.is-ro .tt-x{display:none}
+  .tt-item .tt-x{position:static;width:18px;height:18px;line-height:17px;flex:0 0 18px;margin-left:auto;opacity:.55;font-size:12px}
+  .tt-item:hover .tt-x{opacity:1}
   .tt-now{
     position:absolute;left:0;right:0;height:3px;margin-top:-1px;z-index:6;pointer-events:none;border-radius:3px;
     background:linear-gradient(90deg, rgba(248,113,113,0), #f87171 9%, #fb7185 50%, #f87171 91%, rgba(248,113,113,0));
@@ -855,6 +897,7 @@
 
   /* 访客：时间规划只读 */
   #timer-modal.is-ro #timer-rate{pointer-events:none;opacity:.65}
+  #timer-modal.is-ro #timer-recount{display:none}
   #timer-modal.is-ro .tt-actions,
   #timer-modal.is-ro .timer-sec{display:none}
   #timer-modal.is-ro .tt-block{cursor:default}
@@ -862,6 +905,7 @@
   #timer-modal.is-ro .tt-item{cursor:default}
   body.guest-mode #cat-add,
   body.guest-mode #btn-new{display:none}
+  body.guest-mode #side-tools #btn-import{display:none}
   .pv-list{display:flex;flex-direction:column;gap:6px}
   .pv-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 10px;
     border-radius:8px;background:rgba(8,14,24,.45);border:1px solid rgba(122,152,200,.12);font-size:12.5px;color:#c6d6ea;cursor:pointer}
@@ -1037,6 +1081,7 @@
   /* 1024 以下（含平板）顶栏太挤：收进「⋯」面板 */
   @media (max-width:1100px){
     .btn-io{display:none}
+    .side-tools{display:none}
     .btn-more{
       display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;
       width:34px;height:34px;border-radius:10px;font-size:17px;line-height:1;
@@ -1147,11 +1192,7 @@
         <span class="points-cap" id="points-cap">/ 10</span>
       </div>
       <button class="btn-io" id="btn-timer" type="button" title="课表 / 日常规划 / 科技点转化"><b>◷</b>时间</button>
-      <button class="btn-io" id="btn-doc" type="button" title="使用说明"><b>?</b>说明</button>
       <button class="btn-io" id="btn-bp" type="button" title="蓝图市场 / 我的蓝图库"><b>◈</b>蓝图</button>
-      <button class="btn-io" id="btn-export" type="button" title="把整棵学习树导出成一个文件"><b>↓</b>导出</button>
-      <button class="btn-io" id="btn-import" type="button" title="导入别人的学习树文件"><b>↑</b>导入</button>
-      <button class="btn-io" id="btn-feedback" type="button" title="意见反馈：只有管理员能看到内容"><b>✎</b>反馈</button>
       <button class="btn-more" id="btn-more" type="button" title="更多功能" aria-label="更多功能">⋯</button>
       <button class="btn-primary" id="btn-new" type="button">＋ 新增</button>
       <button class="user-chip" id="user-chip" type="button" title="当前账号">
@@ -1161,6 +1202,13 @@
     </div>
   </div>
 </header>
+
+<nav class="side-tools" id="side-tools" aria-label="快捷工具">
+  <button class="btn-io" id="btn-import" type="button" title="导入别人的学习树文件"><b>↑</b>导入</button>
+  <button class="btn-io" id="btn-export" type="button" title="把整棵学习树导出成一个文件"><b>↓</b>导出</button>
+  <button class="btn-io" id="btn-doc" type="button" title="使用说明"><b>?</b>说明</button>
+  <button class="btn-io" id="btn-feedback" type="button" title="意见反馈：只有管理员能看到内容"><b>✎</b>反馈</button>
+</nav>
 
 <div class="sheet" id="tool-sheet" hidden>
   <div class="sheet-mask" data-sheet-close></div>
@@ -1232,6 +1280,12 @@
   <button id="zoom-fit" type="button" aria-label="适应画布" title="适应画布">⤢</button>
 </div>
 
+<div class="sel-bar" id="sel-bar" hidden>
+  <span id="sel-count">已选 0 个节点</span>
+  <button class="btn-ghost" id="sel-cancel" type="button">取消</button>
+  <button class="btn-danger" id="sel-del" type="button">删除所选</button>
+</div>
+
 <div class="tasks" id="tasks" hidden>
   <button class="tasks-head" id="tasks-head" type="button">
     <span>本周任务</span>
@@ -1281,6 +1335,7 @@
         <select id="new-parent"></select>
       </div>
       <button class="btn-primary" id="btn-create" type="button" style="width:100%">创建</button>
+      <button class="btn-ghost" id="btn-create-known" type="button" style="width:100%;margin-top:8px">＋ 新增已掌握的知识点（不消耗科技点）</button>
 
       <div class="divider"></div>
 
@@ -1497,13 +1552,15 @@
       <div class="stat"><b id="st-friends">0</b><span>好友</span></div>
       <div class="stat"><b id="st-bp">0</b><span>发布蓝图</span></div>
     </div>
-    <div class="me-acts">
-      <button class="btn-ghost" id="btn-fb-open" type="button">✎ 意见反馈</button>
-      <button class="btn-ghost" id="btn-admin" type="button" hidden>⚙ 管理后台</button>
-    </div>
     <div class="section-title" id="req-title" style="margin-top:16px" hidden>好友申请 <span class="count" id="req-count">0</span></div>
     <div class="bp-scroll" id="req-list" style="max-height:150px" hidden></div>
-    <div class="section-title" style="margin-top:18px">好友 <span class="count" id="friend-count">0</span></div>
+    <div class="section-title" style="margin-top:18px">
+      <span>好友 <span class="count" id="friend-count">0</span></span>
+      <span class="me-inline-acts">
+        <button class="btn-ghost" id="btn-fb-open" type="button">✎ 意见反馈</button>
+        <button class="btn-ghost" id="btn-admin" type="button" hidden>⚙ 管理后台</button>
+      </span>
+    </div>
     <div class="bp-scroll" id="friend-list" style="max-height:180px"></div>
     <div class="add-friend">
       <input id="friend-input" type="text" maxlength="20" placeholder="输入用户名搜索">
@@ -1516,14 +1573,19 @@
       <label class="pv-row"><span>时间安排</span><input type="checkbox" id="pv-timer"><i></i></label>
       <label class="pv-row"><span>我的蓝图</span><input type="checkbox" id="pv-bp"><i></i></label>
     </div>
-    <div class="section-title" style="margin-top:18px">修改密码</div>
-    <div class="field">
-      <input id="pw-old" type="password" maxlength="64" placeholder="当前密码" autocomplete="current-password">
+    <div class="section-title" style="margin-top:18px">
+      <span>修改密码</span>
+      <button class="btn-ghost" id="pw-toggle" type="button">展开</button>
     </div>
-    <div class="field">
-      <input id="pw-new" type="password" maxlength="64" placeholder="新密码（至少 8 位）" autocomplete="new-password">
+    <div id="pw-fields" hidden>
+      <div class="field">
+        <input id="pw-old" type="password" maxlength="64" placeholder="当前密码" autocomplete="current-password">
+      </div>
+      <div class="field">
+        <input id="pw-new" type="password" maxlength="64" placeholder="新密码（至少 8 位）" autocomplete="new-password">
+      </div>
+      <button class="btn-primary" id="pw-save" type="button" style="width:100%;margin-bottom:12px">保存新密码</button>
     </div>
-    <button class="btn-primary" id="pw-save" type="button" style="width:100%;margin-bottom:12px">保存新密码</button>
 
     <div class="modal-acts row">
       <button class="btn-ghost" id="me-logout" type="button">退出登录</button>
@@ -1559,6 +1621,7 @@
         <label for="timer-rate">转化率 <b id="timer-rate-val">50%</b></label>
         <input id="timer-rate" type="range" min="0" max="100" step="1" style="width:100%">
         <p class="field-hint">空闲时间换科技点的比例：100% = 1 小时换 1 点</p>
+        <button class="btn-ghost" id="timer-recount" type="button" style="width:100%;margin-top:8px">↻ 重新计算科技点</button>
       </div>
     </div>
 
@@ -1853,6 +1916,7 @@
   var $newParent = document.getElementById('new-parent');
   var $newParentField = document.getElementById('new-parent-field');
   var $btnCreate = document.getElementById('btn-create');
+  var $btnCreateKnown = document.getElementById('btn-create-known');
   var $editName = document.getElementById('edit-name');
   var $editCost = document.getElementById('edit-cost');
   var $editCostLabel = document.getElementById('edit-cost-label');
@@ -2214,7 +2278,8 @@
       return {
         id: typeof p.id === 'string' && p.id ? p.id : makeId(),
         days: days, start: s, end: e,
-        title: String(p.title || '').trim().slice(0, 30) || '安排'
+        title: String(p.title || '').trim().slice(0, 30) || '安排',
+        break: p.break === true
       };
     }
     function normSchedule(obj) {
@@ -2799,6 +2864,9 @@
   function renderNow() {
     syncPoints();
     renderCats();
+    /* 资料卡开着的话，统计数字实时跟着刷新 */
+    if (!$meModal.hidden) renderMeStats();
+    if (canvasSel && Object.keys(canvasSel).length) updateSelBar();
 
     var layout = computeLayout();
     lastLayout = layout;
@@ -2996,6 +3064,11 @@
     return prereqsOf(node).some(function (p) { return !p.unlocked; });
   }
 
+  /* Ctrl+点 多选（画布节点），配合底部「删除所选」 */
+  var canvasSel = {};
+  var $selBar = document.getElementById('sel-bar');
+  var $selCount = document.getElementById('sel-count');
+
   function buildCard(p) {
     var node = p.node;
     var isGroup = node.kind === 'group';
@@ -3016,6 +3089,7 @@
 
     var card = el('div', 'card ' + (isGroup ? 'card-group ' : '') + st.cls);
     card.setAttribute('data-node', node.id);
+    if (canvasSel[node.id]) card.className += ' is-sel';
     if (!p.rail) {
       card.style.left = p.x + 'px';
       card.style.top = p.y + 'px';
@@ -3563,6 +3637,7 @@
     $newParentField.hidden = isGroup;
     $newNameLabel.textContent = isGroup ? '能力名称' : '知识点名称';
     $newName.placeholder = isGroup ? '例如：数学' : '例如：一元二次方程';
+    $btnCreateKnown.hidden = isGroup;
   }
 
   /* 能力名全站唯一（不分分类、不区分大小写） */
@@ -4044,7 +4119,7 @@
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
     if (pointers.size === 1) {
-      drag = { sx: e.clientX, sy: e.clientY, ox: view.x, oy: view.y, moved: false, target: e.target };
+      drag = { sx: e.clientX, sy: e.clientY, ox: view.x, oy: view.y, moved: false, target: e.target, ctrl: !!(e.ctrlKey || e.metaKey) };
       $stage.classList.add('is-panning');
     } else if (pointers.size === 2) {
       drag = null;
@@ -4078,11 +4153,12 @@
     if (!pointers.has(e.pointerId)) return;
     var wasDrag = drag ? drag.moved : false;
     var target = drag ? drag.target : null;
+    var wasCtrl = drag ? drag.ctrl : false;
     pointers.delete(e.pointerId);
 
     if (pointers.size === 0) {
       $stage.classList.remove('is-panning');
-      if (!wasDrag && target && target.closest) handleTap(target);
+      if (!wasDrag && target && target.closest) handleTap(target, wasCtrl);
       drag = null;
       pinch = null;
     } else if (pointers.size === 1) {
@@ -4095,7 +4171,7 @@
   $stage.addEventListener('pointerup', endPointer);
   $stage.addEventListener('pointercancel', endPointer);
 
-  function handleTap(target) {
+  function handleTap(target, isCtrl) {
     var act = target.closest('[data-act]');
     if (act) {
       var kind = act.getAttribute('data-act');
@@ -4107,12 +4183,100 @@
     var card = target.closest('[data-node]');
     if (card) {
       var nid = card.getAttribute('data-node');
+      /* Ctrl+点 = 多选/取消选，不打开编辑抽屉 */
+      if (isCtrl) { toggleCanvasSel(nid, card); return; }
       focusNode(nid);
       openEditor(nid);
       return;
     }
-    if ($reader.hidden) closeDrawer();
+    if ($reader.hidden) {
+      if (!isCtrl) clearCanvasSel();
+      closeDrawer();
+    }
   }
+
+  /* ---------------- Ctrl 多选：选中 / 取消 / 批量删除 ---------------- */
+  function toggleCanvasSel(id, cardEl) {
+    if (readOnly) { toast('这是别人的图谱，只能查看', true); return; }
+    if (canvasSel[id]) delete canvasSel[id];
+    else canvasSel[id] = true;
+    syncSelClass(id);
+    updateSelBar();
+  }
+
+  function syncSelClass(id) {
+    var els = document.querySelectorAll('[data-node="' + id + '"]');
+    Array.prototype.forEach.call(els, function (x) {
+      x.classList.toggle('is-sel', !!canvasSel[id]);
+    });
+  }
+
+  function clearCanvasSel() {
+    Object.keys(canvasSel).forEach(function (id) { delete canvasSel[id]; });
+    var els = document.querySelectorAll('[data-node].is-sel');
+    Array.prototype.forEach.call(els, function (x) { x.classList.remove('is-sel'); });
+    updateSelBar();
+  }
+
+  function updateSelBar() {
+    /* 有的节点可能已被单独删除，清掉无效选择 */
+    Object.keys(canvasSel).forEach(function (id) {
+      if (!findNode(id)) delete canvasSel[id];
+    });
+    var n = Object.keys(canvasSel).length;
+    if ($selBar) {
+      $selBar.hidden = !n;
+      if ($selCount) $selCount.textContent = '已选 ' + n + ' 个节点（Ctrl+点继续加选）';
+    }
+  }
+
+  function deleteSelected() {
+    var ids = Object.keys(canvasSel);
+    var nodes = ids.map(findNode).filter(Boolean);
+    if (!nodes.length) { clearCanvasSel(); return; }
+    askConfirm('删除选中的 ' + nodes.length + ' 个节点？',
+      '分组删除时其下的知识点会变成独立节点（不会被删掉）；已消耗的科技点不退回，节点上的学习记录和笔记一起删除。',
+      '删除').then(function (yes) {
+      if (!yes) return;
+      var delIds = {};
+      var groupIds = {};
+      nodes.forEach(function (n) {
+        delIds[n.id] = true;
+        if (n.kind === 'group') groupIds[n.id] = true;
+      });
+      /* 被删分组的孩子变成独立节点 */
+      state.abilities.forEach(function (a) {
+        if (a.parentId && groupIds[a.parentId]) a.parentId = null;
+      });
+      state.abilities = state.abilities.filter(function (a) { return !delIds[a.id]; });
+      /* 前置引用里指向被删节点的要清掉 */
+      state.abilities.forEach(function (a) {
+        if (Array.isArray(a.prereqIds)) {
+          a.prereqIds = a.prereqIds.filter(function (pid) { return !delIds[pid]; });
+        }
+      });
+      /* 照片 + 笔记文件清理（和单个删除同规则） */
+      nodes.forEach(function (n) {
+        (n.photos || []).forEach(function (p) {
+          if (p.storedAs) fetch(API.photos + '/' + encodeURIComponent(p.storedAs), { method: 'DELETE' }).catch(function () {});
+        });
+      });
+      var goneFiles = state.files.filter(function (f) { return delIds[f.nodeId]; });
+      state.files = state.files.filter(function (f) { return !delIds[f.nodeId]; });
+      goneFiles.forEach(function (f) {
+        if (f.storedAs) fetch(noteUrl(f.storedAs), { method: 'DELETE' }).catch(function () {});
+      });
+
+      closeDrawer();
+      canvasSel = {};
+      saveNow(); render(); refreshDataPanel();
+      updateSelBar();
+      toast('已删除 ' + nodes.length + ' 个节点' + (goneFiles.length ? '及 ' + goneFiles.length + ' 个笔记' : ''));
+    });
+  }
+
+  document.getElementById('sel-del').addEventListener('click', deleteSelected);
+  document.getElementById('sel-cancel').addEventListener('click', clearCanvasSel);
 
   $stage.addEventListener('wheel', function (e) {
     e.preventDefault();
@@ -4149,11 +4313,29 @@
   $segGroup.addEventListener('click', function () { setCreateKind('group'); });
   $segLeaf.addEventListener('click', function () { setCreateKind('leaf'); });
 
-  $btnCreate.addEventListener('click', function () {
+  function createLeafNode(known) {
     var name = $newName.value.trim();
     if (!name) { toast('请输入名称', true); $newName.focus(); return; }
+    var raw = $newCost.value.trim();
+    if (!/^\d+$/.test(raw) || Number(raw) < 1) { toast('科技点必须为正整数', true); $newCost.focus(); return; }
+    state.abilities.push({
+      id: makeId(), name: name, cost: Number(raw), unlocked: !!known,
+      kind: 'leaf', parentId: $newParent.value || null, prereqIds: [],
+      categoryId: $newParent.value ? null : currentCat, note: ''
+    });
+    saveNow(); render(); renderMeStats();
+    $newName.value = '';
+    $newCost.value = '';
+    toast(known
+      ? '已加入「' + name + '」，直接点亮，不消耗科技点'
+      : '已添加「' + name + '」，' + Number(raw) + ' 小时');
+    $newName.focus();
+  }
 
+  $btnCreate.addEventListener('click', function () {
     if (createKind === 'group') {
+      var name = $newName.value.trim();
+      if (!name) { toast('请输入名称', true); $newName.focus(); return; }
       if (abilityNameTaken(name, null)) {
         toast('已经有同名能力了，换一个名字', true);
         $newName.focus();
@@ -4173,20 +4355,9 @@
       $newName.focus();
       return;
     }
-
-    var raw = $newCost.value.trim();
-    if (!/^\d+$/.test(raw) || Number(raw) < 1) { toast('科技点必须为正整数', true); $newCost.focus(); return; }
-    state.abilities.push({
-      id: makeId(), name: name, cost: Number(raw), unlocked: false,
-      kind: 'leaf', parentId: $newParent.value || null, prereqIds: [],
-      categoryId: $newParent.value ? null : currentCat, note: ''
-    });
-    saveNow(); render();
-    $newName.value = '';
-    $newCost.value = '';
-    toast('已添加「' + name + '」，' + Number(raw) + ' 小时');
-    $newName.focus();
+    createLeafNode(false);
   });
+  $btnCreateKnown.addEventListener('click', function () { createLeafNode(true); });
 
   var nameTimer = null, noteTimer = null, costTimer = null, rateTimer = null;
 
@@ -4776,6 +4947,7 @@
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Enter' && !$confirmModal.hidden) { e.preventDefault(); settleConfirm(true); return; }
     if (e.key !== 'Escape') return;
+    if ($selBar && !$selBar.hidden) { clearCanvasSel(); return; }
     if (!$confirmModal.hidden) { settleConfirm(false); return; }
     if (!$reader.hidden) { closeReader(); return; }
     if (!$admBpModal.hidden) { $admBpModal.hidden = true; return; }
@@ -5243,21 +5415,24 @@
     $meSince.textContent = currentUser && currentUser.createdAt
       ? '加入于 ' + new Date(currentUser.createdAt).toLocaleDateString()
       : '';
+    renderMeStats();
+  }
 
+  /* 资料卡里的数字统计：单独抽出，点节点时也能实时刷新 */
+  function renderMeStats() {
     var all = state.abilities.filter(function (a) { return a.kind !== 'group'; });
     var lit = all.filter(function (a) { return a.unlocked; });
     var spent = lit.reduce(function (s, a) { return s + a.cost; }, 0);
     var exp = state.exp || 0;
     var lvl = levelOf(exp);
     var inLvl = exp >= 1500 ? 100 : exp % 100;
-
     $meLevel.textContent = String(lvl);
     $meExpText.textContent = inLvl + ' / 100';
     $meExpFill.style.width = inLvl + '%';
     $stUnlocked.textContent = lit.length + '/' + all.length;
     $stSpent.textContent = String(spent);
     $stFriends.textContent = String(friendCache.length);
-    $stBp.textContent = '…';
+    if (!/^\d+$/.test($stBp.textContent)) $stBp.textContent = '…';
   }
 
   function openMe() {
@@ -5628,6 +5803,13 @@
     });
   });
 
+  /* 修改密码：默认折叠，点「展开」再显示输入框 */
+  var $pwFields = document.getElementById('pw-fields');
+  document.getElementById('pw-toggle').addEventListener('click', function () {
+    $pwFields.hidden = !$pwFields.hidden;
+    this.textContent = $pwFields.hidden ? '展开' : '收起';
+  });
+
   document.getElementById('pw-save').addEventListener('click', function () {
     var oldPw = document.getElementById('pw-old').value;
     var newPw = document.getElementById('pw-new').value;
@@ -5646,6 +5828,8 @@
       btn.disabled = false;
       document.getElementById('pw-old').value = '';
       document.getElementById('pw-new').value = '';
+      $pwFields.hidden = true;
+      document.getElementById('pw-toggle').textContent = '展开';
       toast('密码已修改' + (res.killed ? '，其他设备的登录已失效' : ''));
     }).catch(function (e) {
       btn.disabled = false;
@@ -5824,7 +6008,7 @@
             act.appendChild(btn);
           }
 
-          if (!u.isSelf && !u.protected) {
+          if (!u.isSelf && !u.protected && currentUser && currentUser.protected) {
             var delU = el('button', 'btn-danger mini', '删除账号');
             delU.type = 'button';
             delU.setAttribute('data-adm-del', u.id);
@@ -6369,7 +6553,10 @@
     });
     sc.plans.forEach(function (p) {
       (p.days || []).forEach(function (d2) {
-        perDay[d2 - 1].push({ id: 'p:' + p.id, start: p.start, end: p.end, title: p.title, cls: 'plan', color: null });
+        perDay[d2 - 1].push({
+          id: 'p:' + p.id, start: p.start, end: p.end, title: p.title,
+          cls: p.break ? 'plan break' : 'plan', color: null
+        });
       });
     });
 
@@ -6388,7 +6575,17 @@
       var w = 100 / laneCount;
       items.forEach(function (it) {
         var b = place(di + 1, it.start, it.end, it.title, it.cls, it.color, it.lane * w, w);
-        if (b) b.setAttribute('data-tt-del', it.id);
+        if (!b) return;
+        b.setAttribute('data-tt-del', it.id);
+        b.setAttribute('data-tt-day', String(di + 1));
+        b.setAttribute('data-tt-start', String(it.start));
+        b.setAttribute('data-tt-end', String(it.end));
+        b.setAttribute('data-tt-title', it.title);
+        var x = el('button', 'tt-x', '✕');
+        x.type = 'button';
+        x.setAttribute('data-tt-x', it.id);
+        x.setAttribute('aria-label', '删除' + it.title);
+        b.appendChild(x);
       });
     });
 
@@ -6608,6 +6805,7 @@
     rows.forEach(function (r) {
       var row = el('div', 'tt-item');
       row.setAttribute('data-tt-del', r.id);
+      row.setAttribute('data-tt-title', r.title);
       var dot = el('i', 'ti-dot');
       dot.style.background = r.color;
       row.appendChild(dot);
@@ -6615,6 +6813,11 @@
       var daysTxt = r.days.length === 7 ? '每天'
         : r.days.map(function (d) { return DAY_NAMES[d].replace('周', ''); }).join(' ');
       row.appendChild(el('span', 'ti-meta', daysTxt + ' ' + minToHhmm(r.start) + '-' + minToHhmm(r.end)));
+      var x = el('button', 'tt-x', '✕');
+      x.type = 'button';
+      x.setAttribute('data-tt-x', r.id);
+      x.setAttribute('aria-label', '删除' + r.title);
+      row.appendChild(x);
       $ttList.appendChild(row);
     });
   }
@@ -6622,11 +6825,9 @@
   $ttPrev.addEventListener('click', function () { ttWeekOffset--; renderTimetable(); });
   $ttNext.addEventListener('click', function () { ttWeekOffset++; renderTimetable(); });
 
-  function onTtDeleteClick(e) {
+  /* 删除一条课表安排（带确认） */
+  function ttDelete(v) {
     if (readOnly) return;
-    var b = e.target && e.target.closest ? e.target.closest('[data-tt-del]') : null;
-    if (!b) return;
-    var v = b.getAttribute('data-tt-del');
     var kind = v.charAt(0);
     var id = v.slice(2);
     var sc = scheduleOf(weekKey(new Date(ttWeekStart(ttWeekOffset))));
@@ -6637,6 +6838,7 @@
       askConfirm('删除「' + c.title + '」？', '只从这周课表里移除，已点亮的节点不受影响。', '删除').then(function (yes) {
         if (!yes) return;
         sc.courses = sc.courses.filter(function (x) { return x.id !== id; });
+        ttPicked = null;
         syncPoints(); saveNow(); render(); renderTimetable();
       });
     } else {
@@ -6646,13 +6848,76 @@
       askConfirm('删除「' + p.title + '」？', '会从选中的所有星期里一起移除。', '删除').then(function (yes) {
         if (!yes) return;
         sc.plans = sc.plans.filter(function (x) { return x.id !== id; });
+        ttPicked = null;
         syncPoints(); saveNow(); render(); renderTimetable();
       });
     }
   }
 
-  $ttGrid.addEventListener('click', onTtDeleteClick);
-  if ($ttList) $ttList.addEventListener('click', onTtDeleteClick);
+  /* 单击 → 高亮课表里所有同名安排；再点一次取消 */
+  function ttHighlightByTitle(title, on) {
+    var blocks = $ttGrid.querySelectorAll('.tt-block');
+    Array.prototype.forEach.call(blocks, function (b) {
+      if (b.getAttribute('data-tt-title') === title) b.classList.toggle('hl', on);
+    });
+  }
+
+  /* Ctrl+ 点两张同一天的卡片 → 中间自动插「课间」（课间算占用，不算空闲） */
+  var ttPicked = null;
+  function ttCtrlPick(b) {
+    if (readOnly) { toast('只能查看对方的时间安排', true); return; }
+    var day = Number(b.getAttribute('data-tt-day'));
+    var start = Number(b.getAttribute('data-tt-start'));
+    var end = Number(b.getAttribute('data-tt-end'));
+    var title = b.getAttribute('data-tt-title');
+    if (ttPicked && ttPicked.el === b) {
+      ttPicked = null;
+      b.classList.remove('pick');
+      toast('已取消选择');
+      return;
+    }
+    if (!ttPicked) {
+      ttPicked = { el: b, day: day, start: start, end: end, title: title };
+      b.classList.add('pick');
+      toast('已选「' + title + '」，再 Ctrl+ 点同一天的另一张卡片');
+      return;
+    }
+    /* 第二张卡 */
+    ttPicked.el.classList.remove('pick');
+    if (ttPicked.day !== day) {
+      toast('要选同一天的两张卡片', true);
+      ttPicked = null;
+      return;
+    }
+    var a = ttPicked.start <= start ? ttPicked : { start: start, end: end, title: title };
+    var bb = ttPicked.start <= start ? { start: start, end: end, title: title } : ttPicked;
+    ttPicked = null;
+    if (bb.start < a.end) { toast('这两张卡片是重叠的，中间没有空隙', true); return; }
+    if (bb.start - a.end < 5) { toast('中间空隙太短（不足 5 分钟），不用插课间', true); return; }
+    var sc = scheduleOf(weekKey(new Date(ttWeekStart(ttWeekOffset))));
+    sc.plans.push({
+      id: makeId(), days: [day], start: a.end, end: bb.start,
+      title: '课间', break: true
+    });
+    syncPoints(); saveNow(); render(); renderTimetable();
+    toast('已在 ' + minToHhmm(a.end) + '–' + minToHhmm(bb.start) + ' 插入课间（课间不算空闲时间）');
+  }
+
+  function onTtClick(e) {
+    if (!(e.target instanceof Element)) return;
+    var x = e.target.closest('[data-tt-x]');
+    if (x) { ttDelete(x.getAttribute('data-tt-x')); return; }
+    var b = e.target.closest('[data-tt-del]');
+    if (!b) return;
+    if (e.ctrlKey || e.metaKey) { ttCtrlPick(b); return; }
+    if (b.classList.contains('tt-item')) return; /* 清单行：只留 ✕ 删除 */
+    var title = b.getAttribute('data-tt-title');
+    if (!title) return;
+    ttHighlightByTitle(title, !b.classList.contains('hl'));
+  }
+
+  $ttGrid.addEventListener('click', onTtClick);
+  if ($ttList) $ttList.addEventListener('click', onTtClick);
 
   function openTimer() {
     if (readOnly && guestTimerHidden) { toast('对方没有开放时间安排给好友', true); return; }
@@ -6662,7 +6927,7 @@
     if (tip) {
       tip.textContent = readOnly
         ? '正在查看 ' + (viewingUser ? viewingUser.name : '对方') + ' 的时间安排，只能查看不能修改。'
-        : '点课表色块或下面的条目都能删除；「复制本周 → 切到别的周 → 粘贴到此周」可整周复制。';
+        : '点卡片可高亮所有同名安排；卡片右上角 ✕ 删除；Ctrl+ 点同一天的两张卡片，中间自动插入课间（课间不算空闲）；「复制本周 → 切到别的周 → 粘贴到此周」可整周复制。';
     }
     renderTimerPanel();
   }
@@ -6678,6 +6943,14 @@
     syncPoints();
     if (rateTimer) clearTimeout(rateTimer);
     rateTimer = setTimeout(function () { saveNow(); }, 300);
+  });
+
+  document.getElementById('timer-recount').addEventListener('click', function () {
+    if (readOnly) { toast('访客模式不能操作', true); return; }
+    var st = syncPoints();
+    saveNow();
+    toast('已按剩余空闲时间重新计算：当前可用 ' + fmtPoint(st.available) +
+      ' 科技点（剩余上限 ' + fmtPoint(st.remain + st.bonus) + '）');
   });
 
   document.getElementById('tc-add').addEventListener('click', function () {

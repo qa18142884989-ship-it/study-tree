@@ -560,7 +560,8 @@ function sanitizeTimer(raw) {
     return {
       id: typeof p.id === 'string' && p.id ? p.id.slice(0, 64) : newId('p'),
       days: days, start: start, end: end,
-      title: String(p.title || '').trim().slice(0, 30) || '安排'
+      title: String(p.title || '').trim().slice(0, 30) || '安排',
+      break: p.break === true
     };
   }
   function sanitizeSchedule(obj) {
@@ -1635,9 +1636,35 @@ async function handleApi(req, res, url, user) {
         || tree.categories.find((c) => c.name === bp.categoryName)
         || tree.categories[0];
 
+      /* 只保留完整子树：从合法根（父级为空，或就是蓝图来源根）出发能连到的节点。
+         老蓝图快照里可能残留「父级指向已不存在节点」的悬空数据，
+         以前会把它们全部铺到分类顶层，变成一堆散乱节点，这里过滤掉。 */
+      const bpInSet = new Set(bp.nodes.map((n) => n.id));
+      const kidsOf = new Map();
+      bp.nodes.forEach((n) => {
+        if (!n.parentId || !bpInSet.has(n.parentId)) return;
+        if (!kidsOf.has(n.parentId)) kidsOf.set(n.parentId, []);
+        kidsOf.get(n.parentId).push(n);
+      });
+      const bpRoots = bp.nodes.filter((n) => !n.parentId || n.id === bp.sourceNodeId);
+      const keptNodes = [];
+      const keptIds = new Set();
+      const stack = bpRoots.slice();
+      while (stack.length) {
+        const n = stack.pop();
+        if (keptIds.has(n.id)) continue;
+        keptIds.add(n.id);
+        keptNodes.push(n);
+        (kidsOf.get(n.id) || []).forEach((k) => stack.push(k));
+      }
+
+      if (!keptNodes.length) {
+        return fail(res, 400, '这个蓝图的数据不完整（找不到有效的根节点），导入不了');
+      }
+
       const idMap = {};
-      bp.nodes.forEach((n) => { idMap[n.id] = newId('a'); });
-      const nodes = bp.nodes.map((n) => ({
+      keptNodes.forEach((n) => { idMap[n.id] = newId('a'); });
+      const nodes = keptNodes.map((n) => ({
         id: idMap[n.id],
         name: n.name,
         cost: n.cost,
@@ -1901,6 +1928,8 @@ async function handleApi(req, res, url, user) {
   const delUserMatch = p.match(/^\/api\/admin\/users\/([^/]+)$/);
   if (delUserMatch && req.method === 'DELETE') {
     if (adminOnly(res, user)) return;
+    // 只有最高权限账号能删人
+    if (!isSuperAdmin(user)) return fail(res, 403, '只有最高权限账号可以删除用户');
     const targetId = delUserMatch[1];
     const target = users.find((u) => u.id === targetId);
     if (!target) return fail(res, 404, '用户不存在');
