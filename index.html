@@ -587,7 +587,10 @@
   }
   .rail-head{display:none}
   .rail-item{position:absolute;left:12px;right:12px;will-change:top}
-  .rail-item .card{position:relative !important;left:auto !important;top:auto !important;width:100%;height:auto;min-height:132px;cursor:grab}
+  .rail-item .card{position:relative !important;left:auto !important;top:auto !important;width:100%;height:auto;min-height:100px;cursor:grab;padding:10px 11px 9px 13px;gap:5px}
+  .rail-item .card .card-name{font-size:13px;line-height:1.25}
+  .rail-item .card .card-id{font-size:8.5px}
+  .rail-item .card .card-cost b{font-size:14px}
   .rail-item .card:active{cursor:grabbing}
   .rail-item .card.card-group{box-shadow:0 14px 34px -26px rgba(56,189,248,.95), inset 0 0 26px -16px rgba(56,189,248,.5)}
   .rail-item.dragging .card{box-shadow:0 20px 40px -20px rgba(0,0,0,.9),0 0 0 1px rgba(94,234,212,.6)}
@@ -820,15 +823,13 @@
   .tt-block.plan{background:rgba(143,168,201,.10) !important;border:1px dashed rgba(143,168,201,.55);color:#b7c8dd}
   .tt-block.plan b{font-weight:400}
   .tt-block.break{background:rgba(250,204,21,.10) !important;border:1px dashed rgba(250,204,21,.55);color:#e6c84f}
-  .tt-block.hl{outline:2px solid #38bdf8;outline-offset:1px;box-shadow:0 0 12px rgba(56,189,248,.35);filter:brightness(1.2)}
+  .tt-block.hl{outline:2px solid #38bdf8;outline-offset:1px;box-shadow:0 0 12px rgba(56,189,248,.35)}
+  .tt-block.linked{border-style:solid !important}
   .tt-block.pick{outline:2px solid #f59e0b;outline-offset:1px;box-shadow:0 0 12px rgba(245,158,11,.4)}
-  .tt-x{position:absolute;top:2px;right:2px;width:15px;height:15px;line-height:14px;text-align:center;border-radius:50%;
-    background:rgba(10,14,22,.55);color:#e8eef8;font-size:11px;opacity:0;transition:opacity .12s;cursor:pointer;padding:0;border:0;z-index:3}
-  .tt-block:hover .tt-x{opacity:1}
-  .tt-x:hover{background:#e0443f;color:#fff}
-  #timer-modal.is-ro .tt-x{display:none}
-  .tt-item .tt-x{position:static;width:18px;height:18px;line-height:17px;flex:0 0 18px;margin-left:auto;opacity:.55;font-size:12px}
-  .tt-item:hover .tt-x{opacity:1}
+  .tt-block.band{height:20px !important;padding:2px 6px;display:flex;align-items:center;gap:6px;border-radius:4px}
+  .tt-block.band b{font-size:10px;font-weight:500;white-space:nowrap}
+  .tt-block.band span{font-size:9px;margin-top:0;white-space:nowrap}
+  .tt-item.sel{background:rgba(56,189,248,.12);outline:1px solid rgba(56,189,248,.45)}
   .tt-now{
     position:absolute;left:0;right:0;height:3px;margin-top:-1px;z-index:6;pointer-events:none;border-radius:3px;
     background:linear-gradient(90deg, rgba(248,113,113,0), #f87171 9%, #fb7185 50%, #f87171 91%, rgba(248,113,113,0));
@@ -877,6 +878,7 @@
   .tt-col-left{min-width:0}
   .tt-actions{display:flex;gap:8px;margin-bottom:12px}
   .tt-actions .btn-ghost{flex:1}
+  .tt-actions .btn-danger{flex:0 0 auto;font-size:12px;padding:6px 10px;white-space:nowrap}
   .tt-chars{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:-2px 0 12px}
   .tt-chars-label{font-size:11px;color:#6b7d99}
   .char-chip{
@@ -1645,6 +1647,7 @@
         <div class="tt-actions">
           <button class="btn-ghost" id="tt-copy" type="button">复制本周</button>
           <button class="btn-ghost" id="tt-paste" type="button">粘贴到此周</button>
+          <button class="btn-danger" id="tt-del-sel" type="button" hidden>删除选中</button>
         </div>
         <div class="tt-chars">
           <span class="tt-chars-label">角色</span>
@@ -1667,7 +1670,7 @@
         </div>
         <div class="tt-list-head">本周安排 <span class="count" id="tt-list-count">0</span></div>
         <div class="tt-list" id="tt-list"></div>
-        <div class="tt-tip">点课表色块或下面的条目都能删除；「复制本周 → 切到别的周 → 粘贴到此周」可整周复制。</div>
+        <div class="tt-tip">Ctrl+点同一天的两张卡片，中间自动插入课间（课间不算空闲）。</div>
       </div>
     </div>
   </div>
@@ -2573,7 +2576,7 @@
     var kh = (rect.height - 80) / Math.max(1, worldSize.h);
     var narrow = rect.width < 700;
     // 窄屏优先可读性，不强行塞下整张图
-    var minK = narrow ? 0.72 : 0.5;
+    var minK = narrow ? 0.8 : 0.62;
     var k = clamp(Math.min(kw, kh, 1), minK, 1);
     view.k = k;
 
@@ -6531,9 +6534,15 @@
       var s = Math.max(start, TT_START);
       var e = Math.min(end, TT_END);
       if (e <= s) return null;
-      var block = el('div', 'tt-block' + (cls ? ' ' + cls : '') + (widthPct < 55 ? ' narrow' : ''));
+      var isBreak = cls && cls.indexOf('break') > -1;
+      var block = el('div', 'tt-block' + (cls ? ' ' + cls : '') +
+        (isBreak ? ' band' : '') + (widthPct < 55 && !isBreak ? ' narrow' : ''));
       block.style.top = ((s - TT_START) / 60 * TT_HOUR) + 'px';
-      block.style.height = Math.max(20, (e - s) / 60 * TT_HOUR - 2) + 'px';
+      if (isBreak) {
+        block.style.height = '20px';
+      } else {
+        block.style.height = Math.max(16, (e - s) / 60 * TT_HOUR - 2) + 'px';
+      }
       block.style.left = (leftPct + 0.35) + '%';
       block.style.width = 'calc(' + (widthPct - 0.7) + '% - 1px)';
       if (color) block.style.background = color;
@@ -6581,15 +6590,11 @@
         b.setAttribute('data-tt-start', String(it.start));
         b.setAttribute('data-tt-end', String(it.end));
         b.setAttribute('data-tt-title', it.title);
-        var x = el('button', 'tt-x', '✕');
-        x.type = 'button';
-        x.setAttribute('data-tt-x', it.id);
-        x.setAttribute('aria-label', '删除' + it.title);
-        b.appendChild(x);
       });
     });
 
     renderTtList(sc);
+    applyTtSelection();
 
     if (ttWeekOffset === 0) {
       var now = new Date();
@@ -6813,17 +6818,12 @@
       var daysTxt = r.days.length === 7 ? '每天'
         : r.days.map(function (d) { return DAY_NAMES[d].replace('周', ''); }).join(' ');
       row.appendChild(el('span', 'ti-meta', daysTxt + ' ' + minToHhmm(r.start) + '-' + minToHhmm(r.end)));
-      var x = el('button', 'tt-x', '✕');
-      x.type = 'button';
-      x.setAttribute('data-tt-x', r.id);
-      x.setAttribute('aria-label', '删除' + r.title);
-      row.appendChild(x);
       $ttList.appendChild(row);
     });
   }
 
-  $ttPrev.addEventListener('click', function () { ttWeekOffset--; renderTimetable(); });
-  $ttNext.addEventListener('click', function () { ttWeekOffset++; renderTimetable(); });
+  $ttPrev.addEventListener('click', function () { ttSelectedId = null; ttWeekOffset--; renderTimetable(); });
+  $ttNext.addEventListener('click', function () { ttSelectedId = null; ttWeekOffset++; renderTimetable(); });
 
   /* 删除一条课表安排（带确认） */
   function ttDelete(v) {
@@ -6838,7 +6838,7 @@
       askConfirm('删除「' + c.title + '」？', '只从这周课表里移除，已点亮的节点不受影响。', '删除').then(function (yes) {
         if (!yes) return;
         sc.courses = sc.courses.filter(function (x) { return x.id !== id; });
-        ttPicked = null;
+        ttPicked = null; ttSelectedId = null;
         syncPoints(); saveNow(); render(); renderTimetable();
       });
     } else {
@@ -6848,18 +6848,51 @@
       askConfirm('删除「' + p.title + '」？', '会从选中的所有星期里一起移除。', '删除').then(function (yes) {
         if (!yes) return;
         sc.plans = sc.plans.filter(function (x) { return x.id !== id; });
-        ttPicked = null;
+        ttPicked = null; ttSelectedId = null;
         syncPoints(); saveNow(); render(); renderTimetable();
       });
     }
   }
 
-  /* 单击 → 高亮课表里所有同名安排；再点一次取消 */
-  function ttHighlightByTitle(title, on) {
-    var blocks = $ttGrid.querySelectorAll('.tt-block');
-    Array.prototype.forEach.call(blocks, function (b) {
-      if (b.getAttribute('data-tt-title') === title) b.classList.toggle('hl', on);
+  /* 选中某条安排：被点的卡片高亮，其他同名卡片虚线→实线；右上角出现删除按钮 */
+  var ttSelectedId = null;
+
+  function ttTitleOf(id) {
+    var kind = id.charAt(0), nid = id.slice(2);
+    var sc = scheduleOf(weekKey(new Date(ttWeekStart(ttWeekOffset))));
+    if (kind === 'c') {
+      var c = null; sc.courses.forEach(function (x) { if (x.id === nid) c = x; });
+      return c ? c.title : null;
+    }
+    var p = null; sc.plans.forEach(function (x) { if (x.id === nid) p = x; });
+    return p ? p.title : null;
+  }
+
+  function applyTtSelection() {
+    var selTitle = ttSelectedId ? ttTitleOf(ttSelectedId) : null;
+    var valid = !!ttSelectedId && !!selTitle;
+    Array.prototype.forEach.call($ttGrid.querySelectorAll('.tt-block'), function (b) {
+      var id = b.getAttribute('data-tt-del');
+      var title = b.getAttribute('data-tt-title');
+      b.classList.toggle('hl', valid && id === ttSelectedId);
+      b.classList.toggle('linked', valid && id !== ttSelectedId && title === selTitle);
     });
+    if ($ttList) {
+      Array.prototype.forEach.call($ttList.querySelectorAll('.tt-item'), function (r) {
+        r.classList.toggle('sel', valid && r.getAttribute('data-tt-del') === ttSelectedId);
+      });
+    }
+    var btn = document.getElementById('tt-del-sel');
+    if (btn) {
+      btn.hidden = !valid || readOnly;
+      if (valid) btn.textContent = '删除：' + selTitle;
+    }
+  }
+
+  function ttSelect(id) {
+    if (readOnly) return;
+    ttSelectedId = (ttSelectedId === id) ? null : id;
+    applyTtSelection();
   }
 
   /* Ctrl+ 点两张同一天的卡片 → 中间自动插「课间」（课间算占用，不算空闲） */
@@ -6905,19 +6938,20 @@
 
   function onTtClick(e) {
     if (!(e.target instanceof Element)) return;
-    var x = e.target.closest('[data-tt-x]');
-    if (x) { ttDelete(x.getAttribute('data-tt-x')); return; }
     var b = e.target.closest('[data-tt-del]');
     if (!b) return;
     if (e.ctrlKey || e.metaKey) { ttCtrlPick(b); return; }
-    if (b.classList.contains('tt-item')) return; /* 清单行：只留 ✕ 删除 */
-    var title = b.getAttribute('data-tt-title');
-    if (!title) return;
-    ttHighlightByTitle(title, !b.classList.contains('hl'));
+    ttSelect(b.getAttribute('data-tt-del'));
   }
 
   $ttGrid.addEventListener('click', onTtClick);
   if ($ttList) $ttList.addEventListener('click', onTtClick);
+
+  var $ttDelSel = document.getElementById('tt-del-sel');
+  $ttDelSel.addEventListener('click', function () {
+    if (!ttSelectedId) return;
+    ttDelete(ttSelectedId);
+  });
 
   function openTimer() {
     if (readOnly && guestTimerHidden) { toast('对方没有开放时间安排给好友', true); return; }
@@ -6927,7 +6961,7 @@
     if (tip) {
       tip.textContent = readOnly
         ? '正在查看 ' + (viewingUser ? viewingUser.name : '对方') + ' 的时间安排，只能查看不能修改。'
-        : '点卡片可高亮所有同名安排；卡片右上角 ✕ 删除；Ctrl+ 点同一天的两张卡片，中间自动插入课间（课间不算空闲）；「复制本周 → 切到别的周 → 粘贴到此周」可整周复制。';
+        : 'Ctrl+点同一天的两张卡片，中间自动插入课间（课间不算空闲）。';
     }
     renderTimerPanel();
   }
@@ -6947,10 +6981,12 @@
 
   document.getElementById('timer-recount').addEventListener('click', function () {
     if (readOnly) { toast('访客模式不能操作', true); return; }
+    var tw = timerOf();
+    tw.spent = 0;
+    tw.bonus = 0;
     var st = syncPoints();
     saveNow();
-    toast('已按剩余空闲时间重新计算：当前可用 ' + fmtPoint(st.available) +
-      ' 科技点（剩余上限 ' + fmtPoint(st.remain + st.bonus) + '）');
+    toast('已按剩余空闲时间重新折算：当前可用 ' + fmtPoint(st.available) + ' 科技点');
   });
 
   document.getElementById('tc-add').addEventListener('click', function () {
