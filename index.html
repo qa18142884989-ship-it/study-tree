@@ -6798,8 +6798,8 @@
     });
   }
 
-  $ttPrev.addEventListener('click', function () { ttSelectedId = null; ttWeekOffset--; renderTimetable(); });
-  $ttNext.addEventListener('click', function () { ttSelectedId = null; ttWeekOffset++; renderTimetable(); });
+  $ttPrev.addEventListener('click', function () { ttSelectedId = null; ttListTitle = null; ttWeekOffset--; renderTimetable(); });
+  $ttNext.addEventListener('click', function () { ttSelectedId = null; ttListTitle = null; ttWeekOffset++; renderTimetable(); });
 
   /* 删除一条课表安排（带确认） */
   function ttDelete(v) {
