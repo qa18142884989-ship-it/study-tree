@@ -6798,8 +6798,8 @@
     });
   }
 
-  $ttPrev.addEventListener('click', function () { ttSelectedKey = null; ttListTitle = null; ttWeekOffset--; renderTimetable(); });
-  $ttNext.addEventListener('click', function () { ttSelectedKey = null; ttListTitle = null; ttWeekOffset++; renderTimetable(); });
+  $ttPrev.addEventListener('click', function () { ttSelectedKey = null; ttListTitle = null; ttListDelId = null; ttWeekOffset--; renderTimetable(); });
+  $ttNext.addEventListener('click', function () { ttSelectedKey = null; ttListTitle = null; ttListDelId = null; ttWeekOffset++; renderTimetable(); });
 
   /* 删除一条课表安排（带确认）；day 表示只删跨天计划里的某一天 */
   function ttDelete(id, day) {
@@ -6814,7 +6814,7 @@
       askConfirm('删除「' + c.title + '」？', '只从这周课表里移除，已点亮的节点不受影响。', '删除').then(function (yes) {
         if (!yes) return;
         sc.courses = sc.courses.filter(function (x) { return x.id !== nid; });
-        ttPicked = null; ttSelectedKey = null;
+        ttPicked = null; ttSelectedKey = null; ttListDelId = null;
         syncPoints(); saveNow(); render(); renderTimetable();
       });
     } else {
@@ -6833,7 +6833,7 @@
         } else {
           sc.plans = sc.plans.filter(function (x) { return x.id !== nid; });
         }
-        ttPicked = null; ttSelectedKey = null;
+        ttPicked = null; ttSelectedKey = null; ttListDelId = null;
         syncPoints(); saveNow(); render(); renderTimetable();
       });
     }
@@ -6854,9 +6854,11 @@
   }
 
   var ttListTitle = null; // 清单点击高亮的同名标题
+  var ttListDelId = null; // 清单点击后要删除的整条 id
 
   function applyTtSelection() {
     var validCard = !!ttSelectedKey;
+    var validList = !!ttListDelId;
     Array.prototype.forEach.call($ttGrid.querySelectorAll('.tt-block'), function (b) {
       var day = b.getAttribute('data-tt-day');
       var id = b.getAttribute('data-tt-del');
@@ -6878,23 +6880,27 @@
     }
     var btn = document.getElementById('tt-del-sel');
     if (btn) {
-      btn.hidden = !validCard || readOnly;
+      var hasSel = validCard || validList;
+      btn.hidden = !hasSel || readOnly;
       if (validCard) btn.textContent = '删除：' + ttTitleOf(ttSelectedKey.slice(ttSelectedKey.indexOf('|') + 1));
+      else if (validList) btn.textContent = '删除：' + ttTitleOf(ttListDelId);
     }
   }
 
   function ttSelect(key) {
     if (readOnly) return;
     ttListTitle = null;
+    ttListDelId = null;
     ttSelectedKey = (ttSelectedKey === key) ? null : key;
     applyTtSelection();
   }
 
-  /* 清单里点卡片：高亮课表中所有同名安排 */
-  function ttHighlightAll(title) {
+  /* 清单里点卡片：高亮课表中所有同名安排，并给出删除整条按钮 */
+  function ttHighlightAll(title, id) {
     if (readOnly) return;
     ttSelectedKey = null;
     ttListTitle = (ttListTitle === title) ? null : title;
+    ttListDelId = (ttListDelId === id) ? null : id;
     applyTtSelection();
   }
 
@@ -6944,7 +6950,7 @@
     var b = e.target.closest('[data-tt-del]');
     if (!b) return;
     if (e.ctrlKey || e.metaKey) { ttCtrlPick(b); return; }
-    if (b.classList.contains('tt-item')) ttHighlightAll(b.getAttribute('data-tt-title'));
+    if (b.classList.contains('tt-item')) ttHighlightAll(b.getAttribute('data-tt-title'), b.getAttribute('data-tt-del'));
     else ttSelect(b.getAttribute('data-tt-day') + '|' + b.getAttribute('data-tt-del'));
   }
 
@@ -6953,11 +6959,14 @@
 
   var $ttDelSel = document.getElementById('tt-del-sel');
   $ttDelSel.addEventListener('click', function () {
-    if (!ttSelectedKey) return;
-    var sep = ttSelectedKey.indexOf('|');
-    var day = Number(ttSelectedKey.slice(0, sep));
-    var id = ttSelectedKey.slice(sep + 1);
-    ttDelete(id, day);
+    if (ttSelectedKey) {
+      var sep = ttSelectedKey.indexOf('|');
+      var day = Number(ttSelectedKey.slice(0, sep));
+      var id = ttSelectedKey.slice(sep + 1);
+      ttDelete(id, day);
+    } else if (ttListDelId) {
+      ttDelete(ttListDelId);
+    }
   });
 
   function openTimer() {
