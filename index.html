@@ -6798,8 +6798,8 @@
     });
   }
 
-  $ttPrev.addEventListener('click', function () { ttSelectedId = null; ttListTitle = null; ttWeekOffset--; renderTimetable(); });
-  $ttNext.addEventListener('click', function () { ttSelectedId = null; ttListTitle = null; ttWeekOffset++; renderTimetable(); });
+  $ttPrev.addEventListener('click', function () { ttSelectedKey = null; ttListTitle = null; ttWeekOffset--; renderTimetable(); });
+  $ttNext.addEventListener('click', function () { ttSelectedKey = null; ttListTitle = null; ttWeekOffset++; renderTimetable(); });
 
   /* 删除一条课表安排（带确认） */
   function ttDelete(v) {
@@ -6814,7 +6814,7 @@
       askConfirm('删除「' + c.title + '」？', '只从这周课表里移除，已点亮的节点不受影响。', '删除').then(function (yes) {
         if (!yes) return;
         sc.courses = sc.courses.filter(function (x) { return x.id !== id; });
-        ttPicked = null; ttSelectedId = null;
+        ttPicked = null; ttSelectedKey = null;
         syncPoints(); saveNow(); render(); renderTimetable();
       });
     } else {
@@ -6824,14 +6824,14 @@
       askConfirm('删除「' + p.title + '」？', '会从选中的所有星期里一起移除。', '删除').then(function (yes) {
         if (!yes) return;
         sc.plans = sc.plans.filter(function (x) { return x.id !== id; });
-        ttPicked = null; ttSelectedId = null;
+        ttPicked = null; ttSelectedKey = null;
         syncPoints(); saveNow(); render(); renderTimetable();
       });
     }
   }
 
-  /* 选中某条安排：被点的卡片高亮，其他同名卡片虚线→实线；右上角出现删除按钮 */
-  var ttSelectedId = null;
+  /* 选中某条安排：用 day|id 唯一定位课表里的一格，跨天重复的安排也只高亮被点的那一格 */
+  var ttSelectedKey = null;
 
   function ttTitleOf(id) {
     var kind = id.charAt(0), nid = id.slice(2);
@@ -6847,39 +6847,44 @@
   var ttListTitle = null; // 清单点击高亮的同名标题
 
   function applyTtSelection() {
-    var validCard = !!ttSelectedId && !!ttTitleOf(ttSelectedId);
+    var validCard = !!ttSelectedKey;
     Array.prototype.forEach.call($ttGrid.querySelectorAll('.tt-block'), function (b) {
+      var day = b.getAttribute('data-tt-day');
       var id = b.getAttribute('data-tt-del');
       var title = b.getAttribute('data-tt-title');
-      var on = validCard ? (id === ttSelectedId) : (!!ttListTitle && title === ttListTitle);
+      var on = validCard
+        ? (day + '|' + id === ttSelectedKey)
+        : (!!ttListTitle && title === ttListTitle);
       b.classList.toggle('hl', on);
     });
     if ($ttList) {
       Array.prototype.forEach.call($ttList.querySelectorAll('.tt-item'), function (r) {
         var id = r.getAttribute('data-tt-del');
         var title = r.getAttribute('data-tt-title');
-        var on = validCard ? (id === ttSelectedId) : (!!ttListTitle && title === ttListTitle);
+        var on = validCard
+          ? (id === ttSelectedKey.slice(ttSelectedKey.indexOf('|') + 1))
+          : (!!ttListTitle && title === ttListTitle);
         r.classList.toggle('sel', on);
       });
     }
     var btn = document.getElementById('tt-del-sel');
     if (btn) {
       btn.hidden = !validCard || readOnly;
-      if (validCard) btn.textContent = '删除：' + ttTitleOf(ttSelectedId);
+      if (validCard) btn.textContent = '删除：' + ttTitleOf(ttSelectedKey.slice(ttSelectedKey.indexOf('|') + 1));
     }
   }
 
-  function ttSelect(id) {
+  function ttSelect(key) {
     if (readOnly) return;
     ttListTitle = null;
-    ttSelectedId = (ttSelectedId === id) ? null : id;
+    ttSelectedKey = (ttSelectedKey === key) ? null : key;
     applyTtSelection();
   }
 
   /* 清单里点卡片：高亮课表中所有同名安排 */
   function ttHighlightAll(title) {
     if (readOnly) return;
-    ttSelectedId = null;
+    ttSelectedKey = null;
     ttListTitle = (ttListTitle === title) ? null : title;
     applyTtSelection();
   }
@@ -6931,7 +6936,7 @@
     if (!b) return;
     if (e.ctrlKey || e.metaKey) { ttCtrlPick(b); return; }
     if (b.classList.contains('tt-item')) ttHighlightAll(b.getAttribute('data-tt-title'));
-    else ttSelect(b.getAttribute('data-tt-del'));
+    else ttSelect(b.getAttribute('data-tt-day') + '|' + b.getAttribute('data-tt-del'));
   }
 
   $ttGrid.addEventListener('click', onTtClick);
@@ -6939,8 +6944,8 @@
 
   var $ttDelSel = document.getElementById('tt-del-sel');
   $ttDelSel.addEventListener('click', function () {
-    if (!ttSelectedId) return;
-    ttDelete(ttSelectedId);
+    if (!ttSelectedKey) return;
+    ttDelete(ttSelectedKey.slice(ttSelectedKey.indexOf('|') + 1));
   });
 
   function openTimer() {
