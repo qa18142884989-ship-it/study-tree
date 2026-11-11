@@ -529,10 +529,22 @@ function sanitizeTimer(raw) {
     };
   }
   function sanitizeSchedule(obj) {
-    return {
-      courses: (Array.isArray(obj && obj.courses) ? obj.courses : []).map(sanitizeCourse).filter(Boolean),
-      plans: (Array.isArray(obj && obj.plans) ? obj.plans : []).map(sanitizePlan).filter(Boolean)
-    };
+    const seenC = new Set(), seenP = new Set();
+    const courses = (Array.isArray(obj && obj.courses) ? obj.courses : []).map(sanitizeCourse).filter((c) => {
+      if (!c) return false;
+      const k = c.day + '|' + c.start + '|' + c.end + '|' + c.title;
+      if (seenC.has(k)) return false;
+      seenC.add(k);
+      return true;
+    });
+    const plans = (Array.isArray(obj && obj.plans) ? obj.plans : []).map(sanitizePlan).filter((p) => {
+      if (!p) return false;
+      const k = p.days.slice().sort().join(',') + '|' + p.start + '|' + p.end + '|' + p.title;
+      if (seenP.has(k)) return false;
+      seenP.add(k);
+      return true;
+    });
+    return { courses, plans };
   }
 
   // 按周存储的课表（只保留最近 ~一年内的周，防止无限增长）

@@ -777,17 +777,53 @@
   .tt-grid{flex:1;display:grid;grid-template-columns:repeat(7,1fr);position:relative}
   .tt-col{position:relative;border-left:1px solid rgba(122,152,200,.06);background-image:linear-gradient(rgba(122,152,200,.07) 1px,transparent 1px);background-size:100% 40px}
   .tt-col.today{background-color:rgba(56,189,248,.04)}
-  .tt-block{position:absolute;left:2px;right:2px;border-radius:6px;padding:4px 5px;overflow:hidden;cursor:pointer;font-size:10px;line-height:1.25;color:#f2f7ff;z-index:2}
+  .tt-block{position:absolute;left:0;width:100%;border-radius:6px;padding:4px 5px;overflow:hidden;cursor:pointer;font-size:10px;line-height:1.25;color:#f2f7ff;z-index:2}
   .tt-block b{display:block;font-size:10.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .tt-block span{display:block;font-size:9px;opacity:.85;font-family:var(--mono);margin-top:1px}
+  .tt-block.narrow{padding:3px 3px}
+  .tt-block.narrow b{font-size:9.5px}
+  .tt-block.narrow span{display:none}
   .tt-block:hover{filter:brightness(1.15)}
   .tt-block.plan{background:rgba(143,168,201,.10) !important;border:1px dashed rgba(143,168,201,.55);color:#b7c8dd}
   .tt-block.plan b{font-weight:400}
-  .tt-now{position:absolute;left:0;right:0;height:0;border-top:2px solid #f87171;z-index:4;pointer-events:none}
-  .tt-now::before{content:'';position:absolute;left:-4px;top:-5px;width:8px;height:8px;border-radius:50%;background:#f87171}
+  .tt-now{
+    position:absolute;left:0;right:0;height:3px;margin-top:-1px;z-index:6;pointer-events:none;border-radius:3px;
+    background:linear-gradient(90deg, rgba(248,113,113,0), #f87171 9%, #fb7185 50%, #f87171 91%, rgba(248,113,113,0));
+    box-shadow:0 0 12px rgba(248,113,113,.5), 0 0 3px rgba(248,113,113,.85);
+  }
+  .tt-now-cap{position:absolute;left:-4px;top:-3px;width:9px;height:9px;border-radius:50%;background:#f87171;box-shadow:0 0 9px rgba(248,113,113,.9)}
+  .tt-walker{
+    position:absolute;left:38px;bottom:1px;font-size:15px;line-height:1;transform-origin:50% 100%;
+    animation:ttWalk 1.15s ease-in-out infinite;filter:drop-shadow(0 2px 4px rgba(0,0,0,.55));
+  }
+  .tt-walker::after{
+    content:'';position:absolute;left:50%;bottom:-2px;width:16px;height:4px;border-radius:50%;
+    background:rgba(248,113,113,.38);transform:translateX(-50%);
+    animation:ttPress 1.15s ease-in-out infinite;
+  }
+  @keyframes ttWalk{0%,100%{transform:translateY(-2px)}50%{transform:translateY(-9px)}}
+  @keyframes ttPress{0%,100%{transform:translateX(-50%) scaleX(1);opacity:.45}50%{transform:translateX(-50%) scaleX(.55);opacity:.9}}
+  .tt-now-tip{
+    position:absolute;left:58px;bottom:100%;margin-bottom:5px;white-space:nowrap;
+    font-family:var(--mono);font-size:10px;color:#ffdada;background:rgba(58,14,18,.92);
+    border:1px solid rgba(248,113,113,.42);border-radius:6px;padding:2px 6px;
+  }
   /* 时间规划：左右分栏 */
   .timer-top{display:flex;align-items:flex-end;gap:16px;margin-bottom:12px;flex-wrap:wrap}
   .timer-top .timer-hero{flex:1;min-width:300px;margin-bottom:0}
+  .field-hint{margin:6px 0 0;font-size:11px;color:#5d7090;line-height:1.5}
+  .tt-list-head{display:flex;align-items:center;gap:6px;margin:16px 0 8px;font-size:12.5px;color:#dbe8f7}
+  .tt-list-head .count{font-family:var(--mono);font-size:10.5px;color:#6b7d99}
+  .tt-list{display:flex;flex-direction:column;gap:6px;max-height:190px;overflow:auto}
+  .tt-item{
+    display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:8px;cursor:pointer;
+    background:rgba(8,14,24,.5);border:1px solid rgba(122,152,200,.12);font-size:12px;color:#c6d6ea;
+  }
+  .tt-item:hover{border-color:rgba(248,113,113,.45);color:#ffd9d9}
+  .tt-item .ti-dot{width:7px;height:7px;border-radius:2px;flex:0 0 auto}
+  .tt-item .ti-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tt-item .ti-meta{font-family:var(--mono);font-size:10px;color:#6b7d99;white-space:nowrap}
+  .tt-list-empty{font-size:11.5px;color:#5d7090;padding:6px 2px}
   .tt-layout{display:grid;grid-template-columns:minmax(0,1fr) 248px;gap:16px;align-items:start}
   .tt-col-left{min-width:0}
   .tt-actions{display:flex;gap:8px;margin-bottom:12px}
@@ -801,7 +837,7 @@
   .timer-sec{margin-top:14px;border-top:1px solid rgba(122,152,200,.1);padding-top:12px}
   .tt-col-right .timer-sec{margin-top:0;border-top:0;padding-top:0}
   /* ---------- 时间规划 ---------- */
-  .timer-hero{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:6px}
+  .timer-hero{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:6px}
   .timer-cell{background:rgba(8,14,24,.55);border:1px solid rgba(122,152,200,.12);border-radius:9px;padding:9px 10px}
   .timer-cell span{display:block;font-size:10.5px;color:#6b7d99;letter-spacing:.04em}
   .timer-cell b{display:block;margin-top:4px;font-family:var(--mono);font-size:16px;color:#cfe4ff}
@@ -1471,9 +1507,10 @@
 
     <div class="timer-top">
       <div class="timer-hero" id="timer-hero"></div>
-      <div class="field" style="margin:0;min-width:180px">
+      <div class="field" style="margin:0;min-width:190px">
         <label for="timer-rate">转化率 <b id="timer-rate-val">50%</b></label>
         <input id="timer-rate" type="range" min="0" max="100" step="1" style="width:100%">
+        <p class="field-hint">空闲时间换科技点的比例：100% = 1 小时换 1 点</p>
       </div>
     </div>
 
@@ -1506,10 +1543,13 @@
               <input id="tc-start" type="time" value="08:00"><span class="timer-dash">–</span><input id="tc-end" type="time" value="09:40">
             </div>
             <div class="tp-days" id="tc-days"></div>
+            <p class="field-hint">可多选，勾中的星期都会加上这段</p>
             <button class="btn-primary" id="tc-add" type="button">添加</button>
           </div>
         </div>
-        <div class="tt-tip">点课表里的色块可删除；「复制本周 → 切到别的周 → 粘贴到此周」快速复制课表。</div>
+        <div class="tt-list-head">本周安排 <span class="count" id="tt-list-count">0</span></div>
+        <div class="tt-list" id="tt-list"></div>
+        <div class="tt-tip">点课表色块或下面的条目都能删除；「复制本周 → 切到别的周 → 粘贴到此周」可整周复制。</div>
       </div>
     </div>
   </div>
@@ -1881,6 +1921,8 @@
   var $tcDays = document.getElementById('tc-days');
   var $ttCopy = document.getElementById('tt-copy');
   var $ttPaste = document.getElementById('tt-paste');
+  var $ttList = document.getElementById('tt-list');
+  var $ttListCount = document.getElementById('tt-list-count');
   var $catModal = document.getElementById('cat-modal');
   var $catName = document.getElementById('cat-name');
   var $catDel = document.getElementById('cat-del');
@@ -2107,10 +2149,24 @@
       };
     }
     function normSchedule(obj) {
-      return {
-        courses: (Array.isArray(obj && obj.courses) ? obj.courses : []).map(normCourse).filter(Boolean),
-        plans: (Array.isArray(obj && obj.plans) ? obj.plans : []).map(normPlan).filter(Boolean)
-      };
+      var courses = (Array.isArray(obj && obj.courses) ? obj.courses : []).map(normCourse).filter(Boolean);
+      var plans = (Array.isArray(obj && obj.plans) ? obj.plans : []).map(normPlan).filter(Boolean);
+      // 去重：同名 + 同时间 + 同星期（或同一天）只留一条，避免色块叠在一起
+      var seenC = {};
+      courses = courses.filter(function (c) {
+        var k = c.day + '|' + c.start + '|' + c.end + '|' + c.title;
+        if (seenC[k]) return false;
+        seenC[k] = 1;
+        return true;
+      });
+      var seenP = {};
+      plans = plans.filter(function (p) {
+        var k = p.days.slice().sort().join(',') + '|' + p.start + '|' + p.end + '|' + p.title;
+        if (seenP[k]) return false;
+        seenP[k] = 1;
+        return true;
+      });
+      return { courses: courses, plans: plans };
     }
 
     // 新结构：按周存课表
@@ -6058,10 +6114,9 @@
       d.appendChild(el('b', cls || '', value));
       return d;
     }
-    $timerHero.appendChild(cell('本周空闲', fmtPoint(st.totalHours) + ' h'));
-    $timerHero.appendChild(cell('本周总量', fmtPoint(st.total) + ' 点'));
-    $timerHero.appendChild(cell('当前可用', fmtPoint(st.available) + ' 点', 'hot'));
-    $timerHero.appendChild(cell('距周结束', fmtCountdown(st.leftMs), 'warn'));
+    $timerHero.appendChild(cell('本周总空闲', fmtPoint(st.totalHours) + ' h'));
+    $timerHero.appendChild(cell('剩余空闲', fmtPoint(st.remainHours) + ' h', 'hot'));
+    $timerHero.appendChild(cell('剩余可用科技点', fmtPoint(st.available) + ' 点'));
     if (document.activeElement !== $timerRate) $timerRate.value = String(st.rate);
     $timerRateVal.textContent = st.rate + '%';
   }
@@ -6136,15 +6191,17 @@
       cols.push(col);
     }
 
-    function place(day, start, end, title, cls, color) {
+    function place(day, start, end, title, cls, color, leftPct, widthPct) {
       var col = cols[day - 1];
       if (!col) return null;
       var s = Math.max(start, TT_START);
       var e = Math.min(end, TT_END);
       if (e <= s) return null;
-      var block = el('div', 'tt-block' + (cls ? ' ' + cls : ''));
+      var block = el('div', 'tt-block' + (cls ? ' ' + cls : '') + (widthPct < 55 ? ' narrow' : ''));
       block.style.top = ((s - TT_START) / 60 * TT_HOUR) + 'px';
       block.style.height = Math.max(20, (e - s) / 60 * TT_HOUR - 2) + 'px';
+      block.style.left = (leftPct + 0.35) + '%';
+      block.style.width = 'calc(' + (widthPct - 0.7) + '% - 1px)';
       if (color) block.style.background = color;
       block.appendChild(el('b', '', title));
       block.appendChild(el('span', '', minToHhmm(start) + '–' + minToHhmm(end)));
@@ -6154,26 +6211,62 @@
 
     var viewKey = weekKey(new Date(ws));
     var sc = scheduleOf(viewKey);
+
+    /* 按天收集安排，重叠的自动并排到不同轨道，避免叠在一起看不清 */
+    var perDay = [[], [], [], [], [], [], []];
     sc.courses.forEach(function (c) {
-      var b = place(c.day, c.start, c.end, c.title, 'course', ttColor(c.title));
-      if (b) b.setAttribute('data-tt-del', 'c:' + c.id);
+      perDay[c.day - 1].push({ id: 'c:' + c.id, start: c.start, end: c.end, title: c.title, cls: 'course', color: ttColor(c.title) });
     });
     sc.plans.forEach(function (p) {
       (p.days || []).forEach(function (d2) {
-        var b = place(d2, p.start, p.end, p.title, 'plan');
-        if (b) b.setAttribute('data-tt-del', 'p:' + p.id);
+        perDay[d2 - 1].push({ id: 'p:' + p.id, start: p.start, end: p.end, title: p.title, cls: 'plan', color: null });
       });
     });
+
+    perDay.forEach(function (items, di) {
+      if (!items.length) return;
+      items.sort(function (a, b) { return a.start - b.start || a.end - b.end; });
+      var laneEnd = [];
+      var laneCount = 0;
+      items.forEach(function (it) {
+        var l = 0;
+        while (laneEnd[l] != null && laneEnd[l] > it.start + 1) l++;
+        laneEnd[l] = it.end;
+        it.lane = l;
+        if (l + 1 > laneCount) laneCount = l + 1;
+      });
+      var w = 100 / laneCount;
+      items.forEach(function (it) {
+        var b = place(di + 1, it.start, it.end, it.title, it.cls, it.color, it.lane * w, w);
+        if (b) b.setAttribute('data-tt-del', it.id);
+      });
+    });
+
+    renderTtList(sc);
 
     if (ttWeekOffset === 0) {
       var now = new Date();
       var mins = now.getHours() * 60 + now.getMinutes();
-      if (mins >= TT_START && mins <= TT_END) {
-        var line = el('div', 'tt-now');
-        line.style.top = ((mins - TT_START) / 60 * TT_HOUR) + 'px';
-        $ttGrid.appendChild(line);
-      }
+      if (mins >= TT_START && mins <= TT_END) $ttGrid.appendChild(buildNowLine(mins));
     }
+  }
+
+  /* 「现在」这条线：渐变 + 小人踩在线上 + 剩余时间气泡 */
+  function shortLeft(ms) {
+    var t = Math.max(0, Math.floor((Number(ms) || 0) / 60000));
+    var d = Math.floor(t / 1440), h = Math.floor((t % 1440) / 60), m = t % 60;
+    if (d > 0) return d + '天' + h + 'h';
+    if (h > 0) return h + 'h' + (m ? m + 'm' : '');
+    return m + 'm';
+  }
+
+  function buildNowLine(mins) {
+    var line = el('div', 'tt-now');
+    line.style.top = ((mins - TT_START) / 60 * TT_HOUR) + 'px';
+    line.appendChild(el('i', 'tt-now-cap'));
+    line.appendChild(el('i', 'tt-walker', '🧍'));
+    line.appendChild(el('b', 'tt-now-tip', '剩 ' + shortLeft(timerStats().leftMs)));
+    return line;
   }
 
   /* 实时时间线：只移动红线，不重建整张表 */
@@ -6185,16 +6278,49 @@
     var mins = now.getHours() * 60 + now.getMinutes();
     if (mins < TT_START || mins > TT_END) { if (line) line.remove(); return; }
     if (!line) {
-      line = el('div', 'tt-now');
+      line = buildNowLine(mins);
       $ttGrid.appendChild(line);
     }
     line.style.top = ((mins - TT_START) / 60 * TT_HOUR) + 'px';
+    var tip = line.querySelector('.tt-now-tip');
+    if (tip) tip.textContent = '剩 ' + shortLeft(timerStats().leftMs);
+  }
+
+  /* 右侧「本周安排」清单：和课表同一份数据，点条目即可删除 */
+  function renderTtList(sc) {
+    if (!$ttList) return;
+    $ttList.textContent = '';
+    var rows = [];
+    sc.courses.forEach(function (c) {
+      rows.push({ id: 'c:' + c.id, title: c.title, start: c.start, end: c.end, days: [c.day], color: ttColor(c.title) });
+    });
+    sc.plans.forEach(function (p) {
+      rows.push({ id: 'p:' + p.id, title: p.title, start: p.start, end: p.end, days: p.days || [], color: 'rgba(143,168,201,.85)' });
+    });
+    rows.sort(function (a, b) { return a.start - b.start || a.end - b.end; });
+    if ($ttListCount) $ttListCount.textContent = String(rows.length);
+    if (!rows.length) {
+      $ttList.appendChild(el('div', 'tt-list-empty', '这周还没排东西'));
+      return;
+    }
+    rows.forEach(function (r) {
+      var row = el('div', 'tt-item');
+      row.setAttribute('data-tt-del', r.id);
+      var dot = el('i', 'ti-dot');
+      dot.style.background = r.color;
+      row.appendChild(dot);
+      row.appendChild(el('span', 'ti-name', r.title));
+      var daysTxt = r.days.length === 7 ? '每天'
+        : r.days.map(function (d) { return DAY_NAMES[d].replace('周', ''); }).join(' ');
+      row.appendChild(el('span', 'ti-meta', daysTxt + ' ' + minToHhmm(r.start) + '-' + minToHhmm(r.end)));
+      $ttList.appendChild(row);
+    });
   }
 
   $ttPrev.addEventListener('click', function () { ttWeekOffset--; renderTimetable(); });
   $ttNext.addEventListener('click', function () { ttWeekOffset++; renderTimetable(); });
 
-  $ttGrid.addEventListener('click', function (e) {
+  function onTtDeleteClick(e) {
     var b = e.target && e.target.closest ? e.target.closest('[data-tt-del]') : null;
     if (!b) return;
     var v = b.getAttribute('data-tt-del');
@@ -6220,7 +6346,10 @@
         syncPoints(); saveNow(); render(); renderTimetable();
       });
     }
-  });
+  }
+
+  $ttGrid.addEventListener('click', onTtDeleteClick);
+  if ($ttList) $ttList.addEventListener('click', onTtDeleteClick);
 
   function openTimer() {
     if (readOnly) { toast('访客模式不能改时间规划', true); return; }
@@ -6255,6 +6384,12 @@
       return Math.min(e, slot[1]) > Math.max(s, slot[0]);
     });
     var sc = scheduleOf(weekKey(new Date(ttWeekStart(ttWeekOffset))));
+    var dayKey = days.slice().sort().join(',');
+    var dup = sc.plans.some(function (p) {
+      return (p.days || []).slice().sort().join(',') === dayKey &&
+        p.start === s && p.end === e && p.title === title.slice(0, 30);
+    });
+    if (dup) { toast('这周已经有一段一样的安排了', true); return; }
     sc.plans.push({ id: makeId(), days: days, start: s, end: e, title: title.slice(0, 30) });
     $tcTitle.value = '';
     syncPoints(); saveNow(); render(); renderTimetable();
