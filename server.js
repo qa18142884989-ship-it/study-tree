@@ -1248,6 +1248,10 @@ async function handleApi(req, res, url, user) {
     // 「好友蓝图」：只看好友发布的（不含自己），且仅保留好友可见的那部分
     if (friendOnly) list = list.filter((b) => b.ownerId !== uid && areFriends(uid, b.ownerId));
 
+    // 指定作者：看别人图谱时只看这个人的蓝图
+    const ownerFilter = String(url.searchParams.get('owner') || '');
+    if (ownerFilter) list = list.filter((b) => b.ownerId === ownerFilter);
+
     if (q) {
       list = list.filter((b) =>
         String(b.title || '').toLowerCase().indexOf(q) > -1 ||
