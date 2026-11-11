@@ -1881,6 +1881,57 @@ async function handleApi(req, res, url, user) {
     return sendJson(res, 200, { user: publicUser(target), blueprints: list, total: list.length });
   }
 
+  /* 管理员删除账号：连带清掉这个人的树、笔记、蓝图、好友、聊天、会话、反馈 */
+  const delUserMatch = p.match(/^\/api\/admin\/users\/([^/]+)$/);
+  if (delUserMatch && req.method === 'DELETE') {
+    if (adminOnly(res, user)) return;
+    const targetId = delUserMatch[1];
+    const target = users.find((u) => u.id === targetId);
+    if (!target) return fail(res, 404, '用户不存在');
+    if (target.id === uid) return fail(res, 400, '不能删除自己的账号');
+    if (target.role === 'admin' && users.filter((u) => u.role === 'admin').length <= 1) {
+      return fail(res, 400, '至少需要保留一个管理员');
+    }
+
+    users = users.filter((u) => u.id !== targetId);
+    await writeJson(USERS_FILE, users);
+
+    let killed = 0;
+    Object.keys(sessions).forEach((k) => {
+      if (sessions[k] && sessions[k].uid === targetId) { delete sessions[k]; killed++; }
+    });
+    if (killed) await writeJson(SESSIONS_FILE, sessions);
+
+    const beforeF = friends.length;
+    friends = friends.filter((f) => f.a !== targetId && f.b !== targetId);
+    if (friends.length !== beforeF) await writeJson(FRIENDS_FILE, friends);
+
+    const beforeC = chats.length;
+    chats = chats.filter((m) => m.from !== targetId && m.to !== targetId);
+    if (chats.length !== beforeC) await writeJson(CHAT_FILE, chats);
+
+    const beforeFb = feedback.length;
+    feedback = feedback.filter((f) => f.userId !== targetId);
+    if (feedback.length !== beforeFb) await writeJson(FEEDBACK_FILE, feedback);
+
+    const allBp = await loadBlueprints();
+    const ownBp = allBp.filter((b) => b.ownerId === targetId);
+    if (ownBp.length) {
+      await saveBlueprints(allBp.filter((b) => b.ownerId !== targetId));
+      for (const b of ownBp) {
+        await fsp.rm(path.join(BP_DIR, b.id), { recursive: true, force: true }).catch(() => {});
+      }
+    }
+
+    await fsp.rm(userDir(targetId), { recursive: true, force: true }).catch(() => {});
+
+    console.log('[study-tree] 已删除账号 ' + target.name + '');
+    return sendJson(res, 200, {
+      ok: true, removed: targetId,
+      removedBlueprints: ownBp.length, removedSessions: killed
+    });
+  }
+
   const roleMatch = p.match(/^\/api\/admin\/users\/([^/]+)\/role$/);
   if (roleMatch && req.method === 'POST') {
     if (adminOnly(res, user)) return;

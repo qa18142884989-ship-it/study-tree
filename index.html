@@ -688,7 +688,7 @@
   .role-tag.done{background:rgba(94,234,212,.14);color:#7fe3c4}
   .adm-act{
     flex:0 0 auto;display:flex;flex-direction:row;flex-wrap:wrap;gap:6px;
-    align-items:flex-start;justify-content:flex-end;max-width:230px;
+    align-items:flex-start;justify-content:flex-end;max-width:262px;
   }
   .adm-act button{font-size:11.5px;padding:5px 10px;border-radius:7px;white-space:nowrap}
   .adm-act .mini{font-size:11px;padding:4px 8px;border-radius:6px}
@@ -5820,6 +5820,14 @@
           btn.setAttribute('data-role', u.role === 'admin' ? 'user' : 'admin');
           act.appendChild(btn);
 
+          if (!u.isSelf) {
+            var delU = el('button', 'btn-danger mini', '删除账号');
+            delU.type = 'button';
+            delU.setAttribute('data-adm-del', u.id);
+            delU.setAttribute('data-adm-del-name', u.name);
+            act.appendChild(delU);
+          }
+
           row.appendChild(act);
           $adminUsers.appendChild(row);
         });
@@ -5947,6 +5955,35 @@
     var bpBtn = t.closest('[data-adm-bp]');
     if (bpBtn) {
       openAdmBp(bpBtn.getAttribute('data-adm-bp'), bpBtn.getAttribute('data-adm-bp-name'));
+      return;
+    }
+
+    var delUser = t.closest('[data-adm-del]');
+    if (delUser) {
+      var did = delUser.getAttribute('data-adm-del');
+      var dname = delUser.getAttribute('data-adm-del-name') || '这个账号';
+      askConfirm(
+        '删除账号「' + dname + '」？',
+        'TA 的学习树、笔记、描述照片、蓝图、好友关系、聊天记录都会被永久删除，且无法恢复。',
+        '确认删除'
+      ).then(function (yes) {
+        if (!yes) return;
+        delUser.disabled = true;
+        delUser.textContent = '删除中…';
+        fetch('/api/admin/users/' + encodeURIComponent(did), { method: 'DELETE' })
+          .then(function (r) {
+            return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || '删除失败'); return j; });
+          })
+          .then(function () {
+            toast('已删除账号「' + dname + '」');
+            loadAdminUsers();
+          })
+          .catch(function (err) {
+            delUser.disabled = false;
+            delUser.textContent = '删除账号';
+            toast('删除失败：' + err.message, true);
+          });
+      });
       return;
     }
 
