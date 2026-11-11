@@ -6367,7 +6367,7 @@
   try { charId = localStorage.getItem(CHAR_KEY) || 'cat'; } catch (e) { charId = 'cat'; }
 
   var CHAR_DEFS = {
-    cat: { body: '#23232f', line: '#bda88c', inner: '#8d6b72', eye: '#f4eecb', pupil: '#101014', ear: 'cat', tail: 'curl' },
+    cat: { body: '#22222c', line: '#a68f70', eye: '#f4eecb', pupil: '#101014', ear: 'cat', tail: 'curl' },
     dog: { body: '#dd9c5d', line: '#8f5726', inner: '#b06b46', eye: '#f8f2e2', pupil: '#231708', ear: 'floppy', tail: 'wag' },
     rabbit: { body: '#ece8e1', line: '#a1958a', inner: '#e2b0b5', eye: '#f8f2e2', pupil: '#241d16', ear: 'long', tail: 'puff' },
     penguin: { body: '#242a36', line: '#8090a6', eye: '#ffffff', pupil: '#0b0e14', ear: 'none', tail: 'fin', belly: '#e9eef5', beak: '#e8a33d' }
@@ -6386,14 +6386,17 @@
   ];
 
   function drawChar(g, d, p) {
-    var cx = 24, foot = 74, hy = foot - 34;
+    // 第一版比例：大圆头 + 小身体 + 尖耳朵；foot 放在 76 且整个角色压缩在 y>=21，
+    // 这样跳到最高点（dy=-21）时耳朵也不会跑出画布被裁掉
+    var cx = 24, foot = 76, hy = foot - 30;
     g.save();
     g.translate(cx, foot);
     g.scale(p.sx, p.sy);
     g.translate(-cx, -foot + p.dy);
-    g.lineWidth = 1.4;
+    g.lineWidth = 2;
     g.strokeStyle = d.line;
     g.lineJoin = 'round';
+    g.lineCap = 'round';
 
     function ell(x, y, rx, ry, fill, stroke) {
       g.beginPath();
@@ -6402,76 +6405,71 @@
       if (stroke !== false) g.stroke();
     }
 
+    /* 尾巴 */
     if (d.tail === 'curl') {
-      g.lineWidth = 3.4;
       g.beginPath();
-      g.moveTo(cx + 8, foot - 11);
-      g.bezierCurveTo(cx + 20, foot - 12, cx + 19, foot - 28, cx + 12, foot - 26);
-      g.stroke();
-      g.lineWidth = 1.8;
-    } else if (d.tail === 'wag') {
-      g.lineWidth = 3;
-      g.beginPath(); g.moveTo(cx + 8, foot - 14); g.lineTo(cx + 17, foot - 24); g.stroke();
-      g.lineWidth = 1.8;
-    } else if (d.tail === 'puff') {
-      ell(cx + 12, foot - 16, 3.4, 3.4, d.body);
-    } else if (d.tail === 'fin') {
-      ell(cx + 10, foot - 18, 3, 4.4, d.body);
-    }
-
-    ell(cx, foot - 15, 9.4, 8.8, d.body);
-    if (d.belly) ell(cx, foot - 13, 6.2, 6.6, d.belly, false);
-
-    ell(cx - 4, foot - 3, 3.1, 2.7, d.body);
-    ell(cx + 4, foot - 3, 3.1, 2.7, d.body);
-
-    /* 头先画，耳朵后画：耳朵永远压在头上面，不会被挡住 */
-    ell(cx, hy, 13.3, 12.2, d.body);
-
-    g.lineWidth = 2;
-    function earTri(sx, ah, ah2) {
-      g.beginPath();
-      g.moveTo(cx + sx * 11.6, hy - 5.2);
-      g.lineTo(cx + sx * 14.8, hy - ah);
-      g.lineTo(cx + sx * 1.6, hy - 12.8);
+      g.moveTo(cx + 7, foot - 11.5);
+      g.quadraticCurveTo(cx + 19.5, foot - 13, cx + 16.4, foot - 26);
+      g.quadraticCurveTo(cx + 15.6, foot - 29.2, cx + 13, foot - 27.6);
+      g.quadraticCurveTo(cx + 15.2, foot - 15, cx + 6.2, foot - 15.4);
       g.closePath();
       g.fillStyle = d.body; g.fill(); g.stroke();
-      g.beginPath();
-      g.moveTo(cx + sx * 10.2, hy - 6.8);
-      g.lineTo(cx + sx * 12.3, hy - ah2);
-      g.lineTo(cx + sx * 4.2, hy - 12.4);
-      g.closePath();
-      g.fillStyle = d.inner || d.line; g.fill();
+    } else if (d.tail === 'wag') {
+      g.lineWidth = 2.8;
+      g.beginPath(); g.moveTo(cx + 7.5, foot - 15); g.lineTo(cx + 15.5, foot - 24); g.stroke();
+      g.lineWidth = 2;
+    } else if (d.tail === 'puff') {
+      ell(cx + 11, foot - 17, 3.2, 3.2, d.body);
+    } else if (d.tail === 'fin') {
+      ell(cx + 9.5, foot - 18, 2.8, 4.2, d.body);
     }
 
+    /* 身体 */
+    ell(cx, foot - 14, 8.8, 7.4, d.body);
+    if (d.belly) ell(cx, foot - 12.4, 5.8, 6, d.belly, false);
+
+    /* 脚 */
+    ell(cx - 4, foot - 4, 3.2, 2.8, d.body);
+    ell(cx + 4, foot - 4, 3.2, 2.8, d.body);
+
+    /* 头 */
+    ell(cx, hy, 12.6, 12, d.body);
+
+    /* 耳朵画在头之后，保证不被头挡住 */
     if (d.ear === 'cat') {
-      earTri(-1, 22, 18.2);
-      earTri(1, 22, 18.2);
+      [-1, 1].forEach(function (sx) {
+        g.beginPath();
+        g.moveTo(cx + sx * 12.8, hy - 2.6);
+        g.lineTo(cx + sx * 12.2, hy - 19.4);
+        g.lineTo(cx + sx * 4.4, hy - 11.6);
+        g.closePath();
+        g.fillStyle = d.body; g.fill(); g.stroke();
+      });
     } else if (d.ear === 'floppy') {
-      ell(cx - 12.6, hy - 1, 4.2, 7.4, d.body);
-      ell(cx + 12.6, hy - 1, 4.2, 7.4, d.body);
-      ell(cx - 12.6, hy - 1.6, 2, 4.4, d.inner || d.body, false);
-      ell(cx + 12.6, hy - 1.6, 2, 4.4, d.inner || d.body, false);
+      ell(cx - 12, hy - 1.5, 4, 7, d.body);
+      ell(cx + 12, hy - 1.5, 4, 7, d.body);
+      ell(cx - 12, hy - 2, 1.9, 4.2, d.inner || d.body, false);
+      ell(cx + 12, hy - 2, 1.9, 4.2, d.inner || d.body, false);
     } else if (d.ear === 'long') {
-      g.save(); g.translate(cx - 6.4, hy - 14); g.rotate(-0.16);
-      ell(0, 0, 3.4, 11, d.body);
-      ell(0, 0, 1.7, 7.2, d.inner || d.body, false);
+      g.save(); g.translate(cx - 6, hy - 11); g.rotate(-0.15);
+      ell(0, 0, 3.2, 9.6, d.body);
+      ell(0, 0, 1.6, 6.2, d.inner || d.body, false);
       g.restore();
-      g.save(); g.translate(cx + 6.4, hy - 14); g.rotate(0.16);
-      ell(0, 0, 3.4, 11, d.body);
-      ell(0, 0, 1.7, 7.2, d.inner || d.body, false);
+      g.save(); g.translate(cx + 6, hy - 11); g.rotate(0.15);
+      ell(0, 0, 3.2, 9.6, d.body);
+      ell(0, 0, 1.6, 6.2, d.inner || d.body, false);
       g.restore();
     }
-    g.lineWidth = 1.5;
 
-    ell(cx - 4.6, hy + 0.5, 4.4, 5.2, d.eye, false);
-    ell(cx + 4.6, hy + 0.5, 4.4, 5.2, d.eye, false);
-    ell(cx - 4.6, hy + 0.8, 1.9, 2.6, d.pupil, false);
-    ell(cx + 4.6, hy + 0.8, 1.9, 2.6, d.pupil, false);
+    /* 眼睛：大奶油眼 + 深色瞳孔（第一版的样子） */
+    ell(cx - 4.8, hy + 0.6, 4.4, 5.2, d.eye, false);
+    ell(cx + 4.8, hy + 0.6, 4.4, 5.2, d.eye, false);
+    ell(cx - 4.8, hy + 1, 2, 2.8, d.pupil, false);
+    ell(cx + 4.8, hy + 1, 2, 2.8, d.pupil, false);
 
-    g.fillStyle = 'rgba(255,255,255,.9)';
-    g.beginPath(); g.ellipse(cx - 5.4, hy - 0.9, 0.8, 1.1, 0, 0, Math.PI * 2); g.fill();
-    g.beginPath(); g.ellipse(cx + 3.8, hy - 0.9, 0.8, 1.1, 0, 0, Math.PI * 2); g.fill();
+    g.fillStyle = 'rgba(255,255,255,.92)';
+    g.beginPath(); g.ellipse(cx - 5.5, hy - 0.8, 0.8, 1.1, 0, 0, Math.PI * 2); g.fill();
+    g.beginPath(); g.ellipse(cx + 4.1, hy - 0.8, 0.8, 1.1, 0, 0, Math.PI * 2); g.fill();
 
     if (d.beak) {
       g.beginPath(); g.moveTo(cx - 2.4, hy + 7); g.lineTo(cx + 2.4, hy + 7); g.lineTo(cx, hy + 10.4); g.closePath();
