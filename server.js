@@ -242,6 +242,16 @@ function displayNameOf(u) {
   return d || u.name;
 }
 
+/* 好友可见性：tree 图谱 / timer 时间安排 / bp 蓝图，默认都开放 */
+function normalizePrivacy(raw) {
+  const p = raw && typeof raw === 'object' ? raw : {};
+  return {
+    tree: p.tree !== false,
+    timer: p.timer !== false,
+    bp: p.bp !== false
+  };
+}
+
 function publicUser(u) {
   if (!u) return null;
   return {
@@ -251,7 +261,8 @@ function publicUser(u) {
     avatar: typeof u.avatar === 'string' && u.avatar ? u.avatar : '',
     createdAt: u.createdAt,
     role: u.role === 'admin' ? 'admin' : 'user',
-    admin: u.role === 'admin'
+    admin: u.role === 'admin',
+    privacy: normalizePrivacy(u.privacy)
   };
 }
 
@@ -733,6 +744,11 @@ function bpVisibilityName(id) {
 /* 当前用户能否看到某份蓝图：自己总是能看；公开所有人；仅好友需是好友；私人只有自己 */
 function canSeeBp(uid, b) {
   if (!b || b.ownerId === uid) return true;
+  // 主人关掉了「蓝图对好友可见」：除公开蓝图外都不再展示
+  const owner = users.find((u) => u.id === b.ownerId);
+  if (owner && normalizePrivacy(owner.privacy).bp === false) {
+    return (b.visibility || 'public') === 'public';
+  }
   const vis = b.visibility || 'public';
   if (vis === 'public') return true;
   if (vis === 'friends') return areFriends(uid, b.ownerId);
@@ -1017,6 +1033,7 @@ async function handleApi(req, res, url, user) {
       if (av.length > 400000) return fail(res, 400, '头像太大了，请用 256×256 以内的图片');
       user.avatar = av || '';
     }
+    if (body.privacy !== undefined) user.privacy = normalizePrivacy(body.privacy);
     await writeJson(USERS_FILE, users);
     return sendJson(res, 200, { ok: true, user: publicUser(user) });
   }
@@ -1772,7 +1789,16 @@ async function handleApi(req, res, url, user) {
     }
     const target = users.find((u) => u.id === targetId);
     if (!target) return fail(res, 404, '用户不存在');
+    const pv = normalizePrivacy(target.privacy);
+    if (targetId !== uid && !isAdmin(user) && !pv.tree) {
+      return fail(res, 403, '对方没有开放图谱给好友');
+    }
     const t = await readTree(targetId);
+    // 时间安排单独开关：对好友隐藏时不下发
+    if (targetId !== uid && !pv.timer) {
+      t.timer = { rate: 50, courses: [], plans: [], spent: 0, bonus: 0, weekKey: '', weeks: {} };
+      t.timerHidden = true;
+    }
     return sendJson(res, 200, { user: publicUser(target), tree: t });
   }
 
