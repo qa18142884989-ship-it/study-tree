@@ -1131,7 +1131,7 @@
         <div class="pc-track"><div class="pc-fill" id="hud-fill"></div></div>
         <b class="pc-pct" id="hud-pct">0%</b>
       </div>
-      <div class="points-pill" title="当前可用 / 本周总量（本周总量 = 整周空闲时间 × 转化率，周一一次性到账）">
+      <div class="points-pill" title="当前可用 / 剩余上限（剩余上限 = 本周剩余空闲时间 × 转化率 + 任务奖励，随周进度递减）">
         <span class="points-label">科技点</span>
         <strong id="points">10</strong>
         <span class="points-cap" id="points-cap">/ 10</span>
@@ -4368,8 +4368,8 @@
   }
 
   /* 汇总：本周总空闲 / 剩余空闲 / 本周总量 / 可用
-     发放模型＝整周一次性到账：周一 00:00 就把「整周空闲 × 转化率」全部记入余额，
-     本周内只扣不增（任务奖励另加），下周一自动重置。 */
+     发放模型＝按剩余空闲时间折算：可用 = 剩余空闲 × 转化率 + 任务奖励 − 已用。
+     随周进度递减（周内没用的时间不会攒到下周），下周一自动重置。 */
   function timerStats(now) {
     now = now || Date.now();
     var ws = weekStartTs(now);
@@ -4402,8 +4402,8 @@
       earned: earned,
       bonus: bonus,
       spent: spent,
-      /* 整周一次性到账：本周总量 + 奖励 − 已用 */
-      available: Math.max(0, total + bonus - spent),
+      /* 按剩余空闲折算：剩余空闲值 + 奖励 − 已用 */
+      available: Math.max(0, remain + bonus - spent),
       /* 本周剩余时间（含非可安排时段），供面板倒计时 */
       leftMs: Math.max(0, we - now),
       rate: Number(t.rate) || 0,
@@ -4434,8 +4434,8 @@
     var st = timerStats();
     state.points = Math.round(st.available * 10) / 10;
     if ($points) $points.textContent = fmtPoint(state.points);
-    /* 顶栏显示「当前可用 / 本周总量」，让人一眼看出总量与余额的差别 */
-    if ($pointsCap) $pointsCap.textContent = '/ ' + fmtPoint(st.total);
+    /* 顶栏显示「当前可用 / 剩余上限」，剩余上限＝剩余空闲×转化率+奖励 */
+    if ($pointsCap) $pointsCap.textContent = '/ ' + fmtPoint(st.remain + st.bonus);
     if ($timerModal && !$timerModal.hidden && $timerHero) {
       updateTimerHero(st);
       updateNowLine();
@@ -4615,7 +4615,7 @@
 
     saveNow(); render(); renderTasks();
     $weekText.textContent = '上周（' + oldKey + '）已经结束：周常任务全部重置，' +
-      '新一周（' + key + '）的科技点按整周空闲一次性到账，当前可用 ' + fmtPoint(fresh.available) +
+      '新一周（' + key + '）的科技点按本周剩余空闲时间折算，当前可用 ' + fmtPoint(fresh.available) +
       ' 科技点（上周结束时是 ' + fmtPoint(before) + '）。';
     $weekModal.hidden = false;
   }
