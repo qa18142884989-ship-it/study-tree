@@ -197,9 +197,17 @@ let friends = [];
 let feedback = [];
 let chats = [];
 
+/* 最高权限账号：永远是管理员，不能被取消管理员、不能被删除 */
+const SUPER_ADMIN_NAME = 'protractor45';
+function isSuperAdmin(u) {
+  return !!u && String(u.name || '').toLowerCase() === SUPER_ADMIN_NAME;
+}
+
 async function loadAuth() {
   users = await readJson(USERS_FILE, []);
+  if (!Array.isArray(users)) users = [];   // 文件被写坏时不至于整个服务起不来
   sessions = await readJson(SESSIONS_FILE, {});
+  if (!sessions || typeof sessions !== 'object' || Array.isArray(sessions)) sessions = {};
   friends = await readJson(FRIENDS_FILE, []);
   if (!Array.isArray(friends)) friends = [];
   feedback = await readJson(FEEDBACK_FILE, []);
@@ -211,6 +219,12 @@ async function loadAuth() {
   if (!users.some((u) => u.role === 'admin') && users.length) {
     const first = users.slice().sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0))[0];
     first.role = 'admin';
+    await writeJson(USERS_FILE, users);
+  }
+  // 最高权限账号：无论文件里写成什么，启动时都拉回管理员
+  const superUser = users.find(isSuperAdmin);
+  if (superUser && superUser.role !== 'admin') {
+    superUser.role = 'admin';
     await writeJson(USERS_FILE, users);
   }
   const now = Date.now();
@@ -262,6 +276,7 @@ function publicUser(u) {
     createdAt: u.createdAt,
     role: u.role === 'admin' ? 'admin' : 'user',
     admin: u.role === 'admin',
+    protected: isSuperAdmin(u),
     privacy: normalizePrivacy(u.privacy)
   };
 }
@@ -1850,7 +1865,8 @@ async function handleApi(req, res, url, user) {
         files: t.files.length,
         feedback: feedback.filter((f) => f.userId === u.id).length,
         blueprints: bpsAll.filter((b) => b.ownerId === u.id).length,
-        isSelf: u.id === uid
+        isSelf: u.id === uid,
+        protected: isSuperAdmin(u)
       });
     }
     // 管理员排前面，同级按注册先后
@@ -1889,6 +1905,7 @@ async function handleApi(req, res, url, user) {
     const target = users.find((u) => u.id === targetId);
     if (!target) return fail(res, 404, '用户不存在');
     if (target.id === uid) return fail(res, 400, '不能删除自己的账号');
+    if (isSuperAdmin(target)) return fail(res, 400, '这是最高权限账号，不能删除');
     if (target.role === 'admin' && users.filter((u) => u.role === 'admin').length <= 1) {
       return fail(res, 400, '至少需要保留一个管理员');
     }
@@ -1940,6 +1957,7 @@ async function handleApi(req, res, url, user) {
     catch (e) { return fail(res, 400, '请求格式有误'); }
     const target = users.find((u) => u.id === roleMatch[1]);
     if (!target) return fail(res, 404, '用户不存在');
+    if (isSuperAdmin(target)) return fail(res, 400, '这是最高权限账号，不能取消管理员身份');
     const role = body.role === 'admin' ? 'admin' : 'user';
     if (target.role === 'admin' && role !== 'admin') {
       const others = users.filter((u) => u.id !== target.id && u.role === 'admin');

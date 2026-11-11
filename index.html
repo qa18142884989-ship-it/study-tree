@@ -684,6 +684,7 @@
   }
   .role-tag.admin{background:rgba(245,185,66,.16);color:#f5c264}
   .role-tag.self{background:rgba(94,234,212,.14);color:#7fe3c4}
+  .role-tag.owner{background:linear-gradient(90deg,rgba(248,113,113,.22),rgba(245,185,66,.22));color:#ffd08a;border:1px solid rgba(245,185,66,.35)}
   .role-tag.open{background:rgba(245,185,66,.16);color:#f5c264}
   .role-tag.done{background:rgba(94,234,212,.14);color:#7fe3c4}
   .adm-act{
@@ -5788,6 +5789,7 @@
           var nm = el('div', 'adm-name');
           nm.appendChild(document.createTextNode(u.name));
           if (u.role === 'admin') nm.appendChild(el('span', 'role-tag admin', '管理员'));
+          if (u.protected) nm.appendChild(el('span', 'role-tag owner', '最高权限'));
           if (u.isSelf) nm.appendChild(el('span', 'role-tag self', '我'));
           main.appendChild(nm);
           main.appendChild(el('div', 'adm-meta',
@@ -5814,13 +5816,15 @@
           bp.setAttribute('data-adm-bp-name', u.name);
           act.appendChild(bp);
 
-          var btn = el('button', 'btn-ghost mini', u.role === 'admin' ? '取消管理员' : '设为管理员');
-          btn.type = 'button';
-          btn.setAttribute('data-role-set', u.id);
-          btn.setAttribute('data-role', u.role === 'admin' ? 'user' : 'admin');
-          act.appendChild(btn);
+          if (!u.protected) {
+            var btn = el('button', 'btn-ghost mini', u.role === 'admin' ? '取消管理员' : '设为管理员');
+            btn.type = 'button';
+            btn.setAttribute('data-role-set', u.id);
+            btn.setAttribute('data-role', u.role === 'admin' ? 'user' : 'admin');
+            act.appendChild(btn);
+          }
 
-          if (!u.isSelf) {
+          if (!u.isSelf && !u.protected) {
             var delU = el('button', 'btn-danger mini', '删除账号');
             delU.type = 'button';
             delU.setAttribute('data-adm-del', u.id);
