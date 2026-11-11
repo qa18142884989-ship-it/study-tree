@@ -518,7 +518,7 @@
   .wires{transition:opacity .12s}
   .stage.is-dragging-card .wires{opacity:.1}
   .wires .wire-branch path{stroke:rgba(96,165,250,.42)}
-  .wires .wire-chain path{stroke:rgba(245,185,66,.5);stroke-dasharray:5 4}
+  .wires .wire-chain path{stroke:rgba(245,185,66,.52)}
 
   /* ---------- 分类栏 ---------- */
   .cats{
@@ -840,6 +840,15 @@
     border:1px solid rgba(122,152,200,.18);background:rgba(122,152,200,.07);
     color:#9fb3cf;font-size:11px;padding:3px 8px;border-radius:999px;cursor:pointer;
   }
+  .prereq-box{display:flex;flex-wrap:wrap;gap:5px;max-height:108px;overflow:auto;padding:2px 0}
+  .prereq-chip{
+    border:1px solid rgba(122,152,200,.18);background:rgba(122,152,200,.07);color:#8fa6c2;
+    font-size:11px;padding:4px 9px;border-radius:999px;cursor:pointer;max-width:100%;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  }
+  .prereq-chip:hover{background:rgba(122,152,200,.14);color:#cfdcef}
+  .prereq-chip.on{background:rgba(56,189,248,.16);border-color:rgba(56,189,248,.45);color:#dff1ff}
+  .prereq-empty{font-size:11px;color:#5d7090;padding:2px 0}
   .char-chip:hover{background:rgba(122,152,200,.14);color:#cfdcef}
   .char-chip.on{background:rgba(56,189,248,.16);border-color:rgba(56,189,248,.45);color:#dff1ff}
 
@@ -1131,7 +1140,7 @@
         <div class="pc-track"><div class="pc-fill" id="hud-fill"></div></div>
         <b class="pc-pct" id="hud-pct">0%</b>
       </div>
-      <div class="points-pill" title="当前可用 / 剩余上限（剩余上限 = 本周剩余空闲时间 × 转化率 + 任务奖励，随周进度递减）">
+      <div class="points-pill" title="当前可用 / 本周总量（本周总量 = 整周空闲时间 × 转化率，周一一次性到账）">
         <span class="points-label">科技点</span>
         <strong id="points">10</strong>
         <span class="points-cap" id="points-cap">/ 10</span>
@@ -1306,14 +1315,14 @@
         </div>
       </div>
 
-      <div class="field-row" id="edit-rel-row">
+      <div id="edit-rel-row">
         <div class="field">
           <label for="edit-parent">所属能力</label>
           <select id="edit-parent"></select>
         </div>
         <div class="field">
-          <label for="edit-prereq">前置知识点</label>
-          <select id="edit-prereq"></select>
+          <label>前置知识点 <span class="sec-sub" style="font-weight:400">可多选</span></label>
+          <div class="prereq-box" id="edit-prereq"></div>
         </div>
       </div>
 
@@ -2080,6 +2089,17 @@
 
   function makeId() { return 'a' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
 
+  /* 前置知识点：兼容老的单个 prereqId，统一存成 prereqIds 数组 */
+  function normalizePrereqIds(raw) {
+    var src = Array.isArray(raw.prereqIds) ? raw.prereqIds : (raw.prereqId ? [raw.prereqId] : []);
+    var out = [];
+    src.forEach(function (x) {
+      if (typeof x !== 'string' || !x) return;
+      if (out.indexOf(x) < 0) out.push(x);
+    });
+    return out.slice(0, 8);
+  }
+
   function normalize(raw) {
     if (!raw || typeof raw !== 'object') return null;
     var name = typeof raw.name === 'string' ? raw.name.trim() : '';
@@ -2094,7 +2114,7 @@
       unlocked: raw.unlocked === true,
       kind: kind,
       parentId: typeof raw.parentId === 'string' && raw.parentId ? raw.parentId : null,
-      prereqId: typeof raw.prereqId === 'string' && raw.prereqId ? raw.prereqId : null,
+      prereqIds: normalizePrereqIds(raw),
       categoryId: typeof raw.categoryId === 'string' && raw.categoryId ? raw.categoryId : null,
       ox: isFinite(Number(raw.ox)) ? Math.round(Number(raw.ox)) : 0,
       oy: isFinite(Number(raw.oy)) ? Math.round(Number(raw.oy)) : 0,
@@ -2268,19 +2288,24 @@
     var nodeById = {};
     list.forEach(function (a) { nodeById[a.id] = a; });
     list.forEach(function (a) {
-      if (!a.prereqId) return;
-      var p = nodeById[a.prereqId];
-      if (!p || p.id === a.id || p.kind === 'group' || (p.parentId || '') !== (a.parentId || '')) {
-        a.prereqId = null;
-      }
+      a.prereqIds = (a.prereqIds || []).filter(function (id) {
+        var p = nodeById[id];
+        return !!p && p.id !== a.id && p.kind !== 'group' && (p.parentId || '') === (a.parentId || '');
+      });
     });
     list.forEach(function (a) {
-      var walked = {}, cur = a, guard = 0;
-      while (cur && cur.prereqId && guard++ < 300) {
-        if (walked[cur.id]) { a.prereqId = null; break; }
-        walked[cur.id] = true;
-        cur = nodeById[cur.prereqId] || null;
-      }
+      a.prereqIds = a.prereqIds.filter(function (pid) {
+        var seen = {}, stack = [pid];
+        while (stack.length) {
+          var cur = stack.pop();
+          if (cur === a.id) return false;
+          if (seen[cur]) continue;
+          seen[cur] = true;
+          var n = nodeById[cur];
+          if (n && n.prereqIds) n.prereqIds.forEach(function (x) { stack.push(x); });
+        }
+        return true;
+      });
     });
 
     var tasks = (Array.isArray(doc.tasks) ? doc.tasks : []).map(normalizeTask).filter(Boolean);
@@ -2509,138 +2534,96 @@
     return map;
   }
 
-  function rowsOf(map, pid) {
-    var list = (map[pid] || []).slice();
-    if (!list.length) return [];
-    var byId = {}, next = {}, pointed = {};
-    list.forEach(function (n) { byId[n.id] = n; });
-    list.forEach(function (n) {
-      var p = n.prereqId;
-      if (p && byId[p] && p !== n.id && !next[p]) { next[p] = n; pointed[n.id] = true; }
-    });
-
-    var rows = [], used = {};
-    list.forEach(function (n) {
-      if (pointed[n.id]) return;
-      var row = [], cur = n, guard = 0;
-      while (cur && !used[cur.id] && guard++ < 80) {
-        used[cur.id] = true;
-        row.push(cur);
-        cur = next[cur.id];
-      }
-      if (row.length) rows.push(row);
-    });
-    list.forEach(function (n) { if (!used[n.id]) rows.push([n]); });
-    return rows;
-  }
-
+  /* 画布布局：按「前置」层级横向分列，同一列纵向排开（多前置取最深的层级） */
   function computeLayout() {
     var map = childrenMap();
-    var memo = {};
-
-    function measure(node) {
-      if (memo[node.id]) return memo[node.id];
-      var rows = rowsOf(map, node.id);
-      if (!rows.length) return (memo[node.id] = { w: CARD_W, h: CARD_H });
-      var totalH = 0, maxRowW = 0, first = true;
-      rows.forEach(function (row) {
-        var rowW = 0, rowH = 0;
-        row.forEach(function (n, i) {
-          var m = measure(n);
-          rowW += m.w + (i ? CHAIN_GAP : 0);
-          if (m.h > rowH) rowH = m.h;
-        });
-        totalH += (first ? 0 : ROW_GAP) + rowH;
-        first = false;
-        if (rowW > maxRowW) maxRowW = rowW;
-      });
-      return (memo[node.id] = { w: CARD_W + COL_GAP + maxRowW, h: Math.max(CARD_H, totalH) });
-    }
-
-    var placed = [];
-
-    function place(node, x, yTop) {
-      var m = measure(node);
-      placed.push({
-        node: node,
-        x: x,
-        y: yTop + (m.h - CARD_H) / 2,
-        group: node.kind === 'group',
-        root: !node.parentId
-      });
-
-      var rows = rowsOf(map, node.id);
-      if (!rows.length) return;
-
-      var metas = [], blockH = 0, first = true;
-      rows.forEach(function (row) {
-        var rowW = 0, rowH = 0;
-        row.forEach(function (n) {
-          var mm = measure(n);
-          rowW += mm.w;
-          if (mm.h > rowH) rowH = mm.h;
-        });
-        metas.push({ h: rowH, top: blockH + (first ? 0 : ROW_GAP) });
-        blockH += (first ? 0 : ROW_GAP) + rowH;
-        first = false;
-      });
-
-      var cy = yTop + (m.h - blockH) / 2;
-      rows.forEach(function (row, ri) {
-        var meta = metas[ri];
-        var rx = x + CARD_W + COL_GAP;
-        row.forEach(function (n) {
-          var mm = measure(n);
-          place(n, rx, cy + meta.top + (meta.h - mm.h) / 2);
-          rx += mm.w + CHAIN_GAP;
-        });
-      });
-    }
-
-    function blockHeight(node) {
-      var rows = rowsOf(map, node.id);
-      if (!rows.length) return 0;
-      var h = 0, first = true;
-      rows.forEach(function (row) {
-        var rowH = 0;
-        row.forEach(function (n) { rowH = Math.max(rowH, measure(n).h); });
-        h += (first ? 0 : ROW_GAP) + rowH;
-        first = false;
-      });
-      return h;
-    }
-
-    function placeBlock(node, x, yTop) {
-      var rows = rowsOf(map, node.id);
-      var cy = yTop;
-      rows.forEach(function (row, ri) {
-        var rowH = 0;
-        row.forEach(function (n) { rowH = Math.max(rowH, measure(n).h); });
-        if (ri) cy += ROW_GAP;
-        var rx = x;
-        row.forEach(function (n) {
-          place(n, rx, cy + (rowH - measure(n).h) / 2);
-          rx += measure(n).w + CHAIN_GAP;
-        });
-        cy += rowH;
-      });
-    }
-
-    // 当前分类下的根节点：卡片在左栏，子节点在画布
     var roots = rootsOfCat(currentCat);
-    var y = PAD;
+    var placed = [];
     var blocks = [];
 
+    function layoutChildren(pid, x0, yTop) {
+      var list = (map[pid] || []).slice();
+      if (!list.length) return { h: 0, w: 0 };
+
+      var byId = {};
+      list.forEach(function (n) { byId[n.id] = n; });
+
+      function pres(n) {
+        return (n.prereqIds || []).filter(function (id) { return byId[id] && id !== n.id; });
+      }
+
+      /* 层级 = 所有前置的最大层级 + 1（带环保护） */
+      var depth = {};
+      function depthOf(n, path) {
+        if (depth[n.id] !== undefined) return depth[n.id];
+        if (path[n.id]) return 0;
+        path[n.id] = 1;
+        var d = 0;
+        pres(n).forEach(function (id) {
+          var m = byId[id];
+          if (m) d = Math.max(d, depthOf(m, path) + 1);
+        });
+        delete path[n.id];
+        depth[n.id] = d;
+        return d;
+      }
+      list.forEach(function (n) { depthOf(n, {}); });
+
+      var maxDepth = 0;
+      list.forEach(function (n) { if ((depth[n.id] || 0) > maxDepth) maxDepth = depth[n.id] || 0; });
+
+      var cols = [];
+      for (var i = 0; i <= maxDepth; i++) cols.push([]);
+      list.forEach(function (n) { cols[depth[n.id] || 0].push(n); });
+
+      var pos = {};
+      var bottom = yTop;
+
+      cols.forEach(function (col, ci) {
+        var x = x0 + ci * (CARD_W + COL_GAP);
+        var prevY = yTop;
+        var bary = {};
+
+        if (ci > 0) {
+          col.forEach(function (n) {
+            var ys = pres(n).map(function (id) {
+              return pos[id] ? pos[id].y + CARD_H / 2 : null;
+            }).filter(function (v) { return v !== null; });
+            bary[n.id] = ys.length ? ys.reduce(function (s, v) { return s + v; }, 0) / ys.length : null;
+          });
+          col.sort(function (a, b) {
+            var av = bary[a.id], bv = bary[b.id];
+            if (av === null && bv === null) return 0;
+            if (av === null) return -1;
+            if (bv === null) return 1;
+            return av - bv;
+          });
+        }
+
+        col.forEach(function (n) {
+          var y = prevY;
+          if (bary[n.id] != null) y = Math.max(prevY, bary[n.id] - CARD_H / 2);
+          var p = { node: n, x: x, y: y, group: n.kind === 'group', root: !n.parentId };
+          placed.push(p);
+          pos[n.id] = p;
+          prevY = y + CARD_H + ROW_GAP;
+          if (y + CARD_H > bottom) bottom = y + CARD_H;
+        });
+      });
+
+      return { h: bottom - yTop, w: (maxDepth + 1) * (CARD_W + COL_GAP) - COL_GAP };
+    }
+
+    var y = PAD;
     roots.forEach(function (root) {
       if (root.kind !== 'group') {
-        // 没有父级的知识点：直接作为画布上的独立卡片
-        place(root, PAD, y);
+        placed.push({ node: root, x: PAD, y: y, group: false, root: true });
         y += CARD_H + ROOT_GAP;
         return;
       }
-      var h = blockHeight(root);
-      blocks.push({ id: root.id, top: y, height: h, center: y + h / 2 });
-      if (h) placeBlock(root, PAD, y);
+      var box = layoutChildren(root.id, PAD, y);
+      var h = box.h > 0 ? box.h : 0;
+      blocks.push({ id: root.id, top: y, height: h, center: y + Math.max(h, CARD_H) / 2 });
       y += Math.max(h, CARD_H) + ROOT_GAP;
     });
 
@@ -2865,7 +2848,9 @@
       if (!pp) return;
       var kidIds = {};
       kids.forEach(function (k) { kidIds[k.id] = true; });
-      var heads = kids.filter(function (k) { return !(k.prereqId && kidIds[k.prereqId]); });
+      var heads = kids.filter(function (k) {
+        return !(k.prereqIds || []).some(function (id) { return kidIds[id]; });
+      });
       if (!heads.length) heads = [kids[0]];
 
       var x1 = pp.x + CARD_W, y1 = pp.y + CARD_H / 2;
@@ -2881,28 +2866,37 @@
       });
     });
 
-    // 包含（前置）：同一行内前后相连；中间隔了子树时从上方绕行
+    // 前置关系：可以有多个前置，每条前置单独一根线，终点稍微错开
     state.abilities.forEach(function (n) {
-      if (!n.prereqId) return;
-      var a = pos[n.prereqId], b = pos[n.id];
-      if (!a || !b) return;
-      var ay = a.y + CARD_H / 2, by = b.y + CARD_H / 2;
-      var gap = b.x - (a.x + CARD_W);
-      var seg = '';
-      if (gap <= 96) {
-        var midx = (a.x + CARD_W + b.x) / 2;
-        seg = 'M' + r1(a.x + CARD_W) + ' ' + r1(ay) +
-          ' C' + r1(midx) + ' ' + r1(ay) + ',' + r1(midx) + ' ' + r1(by) + ',' + r1(b.x) + ' ' + r1(by);
-      } else {
-        var lane = Math.min(a.y, b.y) - 26;
-        seg = roundedPath([
-          { x: a.x + CARD_W / 2, y: a.y },
-          { x: a.x + CARD_W / 2, y: lane },
-          { x: b.x + CARD_W / 2, y: lane },
-          { x: b.x + CARD_W / 2, y: b.y }
-        ], 16);
-      }
-      if (b.unlocked) hotChain += seg; else chainPaths += seg;
+      var ids = n.prereqIds || [];
+      if (!ids.length) return;
+      var b = pos[n.id];
+      if (!b) return;
+      var by0 = b.y + CARD_H / 2;
+      ids.forEach(function (pid, i) {
+        var a = pos[pid];
+        if (!a) return;
+        var ay = a.y + CARD_H / 2;
+        var by = by0 + (ids.length > 1 ? (i - (ids.length - 1) / 2) * 10 : 0);
+        var gap = b.x - (a.x + CARD_W);
+        var seg = '';
+        if (Math.abs(by - ay) <= 58 && gap <= 110) {
+          /* 同一层附近：平滑曲线 */
+          var midx = (a.x + CARD_W + b.x) / 2;
+          seg = 'M' + r1(a.x + CARD_W) + ' ' + r1(ay) +
+            ' C' + r1(midx) + ' ' + r1(ay) + ',' + r1(midx) + ' ' + r1(by) + ',' + r1(b.x) + ' ' + r1(by);
+        } else {
+          /* 上下跨得多：走竖向总线，避免从中间的卡片背后穿过 */
+          var laneX = a.x + CARD_W + Math.min(30, Math.max(18, gap * 0.45));
+          seg = roundedPath([
+            { x: a.x + CARD_W, y: ay },
+            { x: laneX, y: ay },
+            { x: laneX, y: by },
+            { x: b.x, y: by }
+          ], 12);
+        }
+        if (n.unlocked) hotChain += seg; else chainPaths += seg;
+      });
     });
 
     var svgHtml = '<defs><linearGradient id="wireGrad" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#38bdf8"/><stop offset="1" stop-color="#34d399"/></linearGradient></defs>';
@@ -2956,7 +2950,9 @@
 
       var kidIds = {};
       kids.forEach(function (k) { kidIds[k.id] = true; });
-      var heads = kids.filter(function (k) { return !(k.prereqId && kidIds[k.prereqId]); });
+      var heads = kids.filter(function (k) {
+        return !(k.prereqIds || []).some(function (id) { return kidIds[id]; });
+      });
       if (!heads.length) heads = [kids[0]];
 
       var targets = [];
@@ -2989,14 +2985,14 @@
     $links.innerHTML = out;
   }
 
-  function prereqOf(node) {
-    return node && node.prereqId ? findNode(node.prereqId) : null;
+  function prereqsOf(node) {
+    if (!node || !Array.isArray(node.prereqIds)) return [];
+    return node.prereqIds.map(function (id) { return findNode(id); }).filter(Boolean);
   }
 
   function prereqBlocked(node) {
     if (!node || node.unlocked) return false;
-    var p = prereqOf(node);
-    return !!(p && !p.unlocked);
+    return prereqsOf(node).some(function (p) { return !p.unlocked; });
   }
 
   function buildCard(p) {
@@ -3006,8 +3002,8 @@
     var total = isGroup ? groupTotal(node.id) : node.cost;
     var remaining = isGroup ? groupRemaining(node.id) : node.cost;
     var done = isGroup ? groupDone(node.id) : node.unlocked;
-    var pre = isGroup ? null : prereqOf(node);
-    var blocked = !!(pre && !pre.unlocked && !node.unlocked);
+    var preList = isGroup ? [] : prereqsOf(node);
+    var blocked = !node.unlocked && preList.some(function (p) { return !p.unlocked; });
     var affordable = isGroup ? (remaining > 0 && remaining <= state.points) : (state.points >= node.cost);
     if (blocked) affordable = false;
 
@@ -3038,9 +3034,15 @@
     }
     card.appendChild(cost);
 
-    if (pre) {
-      var line = el('div', 'card-prereq' + (pre.unlocked ? '' : ' lock'), '⇠ 前置 · ' + pre.name);
-      line.title = '需先点亮「' + pre.name + '」才能点亮当前节点';
+    if (preList.length) {
+      var preNames = preList.map(function (p) { return p.name; });
+      var preLocked = preList.filter(function (p) { return !p.unlocked; });
+      var preTxt = preNames.join('、');
+      var line = el('div', 'card-prereq' + (preLocked.length ? ' lock' : ''),
+        '⇠ 前置 · ' + (preNames.length > 2 ? preNames.slice(0, 2).join('、') + ' 等 ' + preNames.length + ' 个' : preTxt));
+      line.title = preLocked.length
+        ? '需先点亮：' + preLocked.map(function (p) { return p.name; }).join('、')
+        : '前置已完成：' + preTxt;
       card.appendChild(line);
     }
 
@@ -3066,7 +3068,7 @@
       var dis = el('button', 'mini-btn', isGroup ? '整组点亮' : '点亮');
       dis.type = 'button';
       dis.disabled = true;
-      if (blocked) dis.title = '需先点亮「' + pre.name + '」';
+      if (blocked) dis.title = '需先点亮：' + preList.filter(function (p) { return !p.unlocked; }).map(function (p) { return p.name; }).join('、');
       foot.appendChild(dis);
     }
     card.appendChild(foot);
@@ -3457,7 +3459,8 @@
     var a = findNode(id);
     if (!a || a.kind === 'group' || a.unlocked) return;
     if (prereqBlocked(a)) {
-      toast('要先点亮「' + prereqOf(a).name + '」才能点亮它', true);
+      var locked = prereqsOf(a).filter(function (p) { return !p.unlocked; }).map(function (p) { return p.name; });
+      toast('要先点亮「' + locked.join('」「') + '」才能点亮它', true);
       return;
     }
     var avail = syncPoints().available;
@@ -3481,8 +3484,7 @@
     var guard = 0;
     while (pending.length && guard++ < 300) {
       var ready = pending.filter(function (k) {
-        var p = prereqOf(k);
-        return !p || p.unlocked || order.indexOf(p) > -1;
+        return prereqsOf(k).every(function (p) { return p.unlocked || order.indexOf(p) > -1; });
       });
       if (!ready.length) break;
       ready.forEach(function (k) { order.push(k); });
@@ -3777,23 +3779,31 @@
       return (a.parentId || '') === wantParent;
     });
     $editPrereq.textContent = '';
-    var none2 = el('option', '', '无');
-    none2.value = '';
-    $editPrereq.appendChild(none2);
+    if (!sibs.length) {
+      $editPrereq.appendChild(el('span', 'prereq-empty', '这个能力下还没有别的知识点'));
+      return;
+    }
+    var chosen = node.prereqIds || [];
     sibs.forEach(function (s) {
-      var op = el('option', '', s.name + (s.unlocked ? '（已点亮）' : ''));
-      op.value = s.id;
-      $editPrereq.appendChild(op);
+      var on = chosen.indexOf(s.id) > -1;
+      var chip = el('button', 'prereq-chip' + (on ? ' on' : ''), s.name);
+      chip.type = 'button';
+      chip.setAttribute('data-prereq', s.id);
+      chip.title = (s.unlocked ? '已点亮' : '未点亮') + ' · ' + s.name + '（点一下切换）';
+      $editPrereq.appendChild(chip);
     });
-    $editPrereq.value = (node.prereqId && sibs.some(function (s) { return s.id === node.prereqId; }))
-      ? node.prereqId : '';
   }
 
-  function createsCycle(nodeId, prereqId) {
-    var cur = findNode(prereqId), guard = 0;
-    while (cur && guard++ < 300) {
-      if (cur.id === nodeId) return true;
-      cur = cur.prereqId ? findNode(cur.prereqId) : null;
+  /* 顺着前置链能不能绕回自己 */
+  function wouldCycle(nodeId, pid) {
+    var stack = [pid], seen = {};
+    while (stack.length) {
+      var id = stack.pop();
+      if (id === nodeId) return true;
+      if (seen[id]) continue;
+      seen[id] = true;
+      var n = findNode(id);
+      if (n && n.prereqIds) n.prereqIds.forEach(function (x) { stack.push(x); });
     }
     return false;
   }
@@ -4151,7 +4161,7 @@
       var gid = makeId();
       state.abilities.push({
         id: gid, name: name, cost: 0, unlocked: false, kind: 'group',
-        parentId: null, prereqId: null, categoryId: currentCat, note: ''
+        parentId: null, prereqIds: [], categoryId: currentCat, note: ''
       });
       saveNow(); render();
       $newName.value = '';
@@ -4167,7 +4177,7 @@
     if (!/^\d+$/.test(raw) || Number(raw) < 1) { toast('科技点必须为正整数', true); $newCost.focus(); return; }
     state.abilities.push({
       id: makeId(), name: name, cost: Number(raw), unlocked: false,
-      kind: 'leaf', parentId: $newParent.value || null, prereqId: null,
+      kind: 'leaf', parentId: $newParent.value || null, prereqIds: [],
       categoryId: $newParent.value ? null : currentCat, note: ''
     });
     saveNow(); render();
@@ -4235,21 +4245,28 @@
     var node = findNode(currentId);
     if (!node) return;
     node.parentId = $editParent.value || null;
-    var p = prereqOf(node);
-    if (p && (p.parentId || '') !== (node.parentId || '')) node.prereqId = null;
+    node.prereqIds = (node.prereqIds || []).filter(function (id) {
+      var p = findNode(id);
+      return p && (p.parentId || '') === (node.parentId || '');
+    });
     saveNow(); render(); syncRelSelects();
   });
 
-  $editPrereq.addEventListener('change', function () {
+  $editPrereq.addEventListener('click', function (e) {
+    var chip = e.target && e.target.closest ? e.target.closest('[data-prereq]') : null;
+    if (!chip) return;
     var node = findNode(currentId);
     if (!node) return;
-    var v = $editPrereq.value || null;
-    if (v && createsCycle(node.id, v)) {
-      toast('这样会形成循环前置，换一个吧', true);
-      syncRelSelects();
-      return;
+    var pid = chip.getAttribute('data-prereq');
+    var ids = (node.prereqIds || []).slice();
+    var i = ids.indexOf(pid);
+    if (i > -1) {
+      ids.splice(i, 1);
+    } else {
+      if (wouldCycle(node.id, pid)) { toast('这样会形成循环前置，换一个吧', true); return; }
+      ids.push(pid);
     }
-    node.prereqId = v;
+    node.prereqIds = ids;
     saveNow(); render(); syncRelSelects();
   });
 
@@ -4368,8 +4385,8 @@
   }
 
   /* 汇总：本周总空闲 / 剩余空闲 / 本周总量 / 可用
-     发放模型＝按剩余空闲时间折算：可用 = 剩余空闲 × 转化率 + 任务奖励 − 已用。
-     随周进度递减（周内没用的时间不会攒到下周），下周一自动重置。 */
+     发放模型＝整周一次性到账：周一 00:00 就把「整周空闲 × 转化率」全部记入余额，
+     本周内只扣不增（任务奖励另加），下周一自动重置。 */
   function timerStats(now) {
     now = now || Date.now();
     var ws = weekStartTs(now);
@@ -4402,8 +4419,8 @@
       earned: earned,
       bonus: bonus,
       spent: spent,
-      /* 按剩余空闲折算：剩余空闲值 + 奖励 − 已用 */
-      available: Math.max(0, remain + bonus - spent),
+      /* 整周一次性到账：本周总量 + 奖励 − 已用 */
+      available: Math.max(0, total + bonus - spent),
       /* 本周剩余时间（含非可安排时段），供面板倒计时 */
       leftMs: Math.max(0, we - now),
       rate: Number(t.rate) || 0,
@@ -4434,8 +4451,8 @@
     var st = timerStats();
     state.points = Math.round(st.available * 10) / 10;
     if ($points) $points.textContent = fmtPoint(state.points);
-    /* 顶栏显示「当前可用 / 剩余上限」，剩余上限＝剩余空闲×转化率+奖励 */
-    if ($pointsCap) $pointsCap.textContent = '/ ' + fmtPoint(st.remain + st.bonus);
+    /* 顶栏显示「当前可用 / 本周总量」，让人一眼看出总量与余额的差别 */
+    if ($pointsCap) $pointsCap.textContent = '/ ' + fmtPoint(st.total);
     if ($timerModal && !$timerModal.hidden && $timerHero) {
       updateTimerHero(st);
       updateNowLine();
@@ -4615,7 +4632,7 @@
 
     saveNow(); render(); renderTasks();
     $weekText.textContent = '上周（' + oldKey + '）已经结束：周常任务全部重置，' +
-      '新一周（' + key + '）的科技点按本周剩余空闲时间折算，当前可用 ' + fmtPoint(fresh.available) +
+      '新一周（' + key + '）的科技点按整周空闲一次性到账，当前可用 ' + fmtPoint(fresh.available) +
       ' 科技点（上周结束时是 ' + fmtPoint(before) + '）。';
     $weekModal.hidden = false;
   }

@@ -465,7 +465,16 @@ function normalizeNode(raw) {
     unlocked: raw.unlocked === true,
     kind: kind,
     parentId: typeof raw.parentId === 'string' && raw.parentId ? raw.parentId.slice(0, 64) : null,
-    prereqId: typeof raw.prereqId === 'string' && raw.prereqId ? raw.prereqId.slice(0, 64) : null,
+    prereqIds: (function () {
+      const src = Array.isArray(raw.prereqIds) ? raw.prereqIds : (raw.prereqId ? [raw.prereqId] : []);
+      const out = [];
+      src.forEach((x) => {
+        if (typeof x !== 'string' || !x) return;
+        const v = x.slice(0, 64);
+        if (out.indexOf(v) < 0) out.push(v);
+      });
+      return out.slice(0, 8);
+    })(),
     categoryId: typeof raw.categoryId === 'string' && raw.categoryId ? raw.categoryId.slice(0, 64) : null,
     ox: isFinite(ox) ? Math.round(ox) : 0,
     oy: isFinite(oy) ? Math.round(oy) : 0,
@@ -622,18 +631,26 @@ function sanitizeTree(raw) {
 
   const nodeById = new Map(list.map((a) => [a.id, a]));
   list.forEach((a) => {
-    if (!a.prereqId) return;
-    const p = nodeById.get(a.prereqId);
-    if (!p || p.kind === 'group' || p.id === a.id || (p.parentId || '') !== (a.parentId || '')) a.prereqId = null;
+    a.prereqIds = (a.prereqIds || []).filter((id) => {
+      const p = nodeById.get(id);
+      return !!p && p.kind !== 'group' && p.id !== a.id && (p.parentId || '') === (a.parentId || '');
+    });
   });
+  /* 断环：某个前置顺着链条能回到自己，就把这条前置去掉 */
   list.forEach((a) => {
-    const walked = new Set();
-    let cur = a, guard = 0;
-    while (cur && cur.prereqId && guard++ < 300) {
-      if (walked.has(cur.id)) { a.prereqId = null; break; }
-      walked.add(cur.id);
-      cur = nodeById.get(cur.prereqId) || null;
-    }
+    a.prereqIds = a.prereqIds.filter((pid) => {
+      const seen = new Set();
+      const stack = [pid];
+      while (stack.length) {
+        const cur = stack.pop();
+        if (cur === a.id) return false;
+        if (seen.has(cur)) continue;
+        seen.add(cur);
+        const n = nodeById.get(cur);
+        if (n && Array.isArray(n.prereqIds)) n.prereqIds.forEach((x) => stack.push(x));
+      }
+      return true;
+    });
   });
 
   const files = [];
@@ -1371,7 +1388,7 @@ async function handleApi(req, res, url, user) {
       size: files.reduce((s, f) => s + (f.size || 0), 0),
       nodes: sub.nodes.map((n) => ({
         id: n.id, name: n.name, cost: n.cost, unlocked: n.unlocked, kind: n.kind,
-        parentId: n.parentId, prereqId: n.prereqId, note: n.note
+        parentId: n.parentId, prereqIds: n.prereqIds || [], note: n.note
       })),
       files: files,
       images: images
@@ -1448,7 +1465,7 @@ async function handleApi(req, res, url, user) {
           size: bp.size,
           nodes: (bp.nodes || []).map((x) => ({
             id: x.id, name: x.name, kind: x.kind, cost: x.cost,
-            parentId: x.parentId || null, prereqId: x.prereqId || null
+            parentId: x.parentId || null, prereqIds: x.prereqIds || []
           })),
           files: (bp.files || []).map((x) => ({ name: x.name, size: x.size })),
           images: (bp.images || []).map((x) => ({ id: x.id, name: x.name, size: x.size, mime: x.mime }))
@@ -1567,7 +1584,7 @@ async function handleApi(req, res, url, user) {
 
       bp.nodes = sub.nodes.map((x) => ({
         id: x.id, name: x.name, cost: x.cost, unlocked: x.unlocked, kind: x.kind,
-        parentId: x.parentId, prereqId: x.prereqId, note: x.note
+        parentId: x.parentId, prereqIds: x.prereqIds || [], note: x.note
       }));
       bp.files = files;
       bp.size = files.reduce((sum, f) => sum + (f.size || 0), 0);
@@ -1612,7 +1629,7 @@ async function handleApi(req, res, url, user) {
         unlocked: false,
         kind: n.kind,
         parentId: n.parentId ? (idMap[n.parentId] || null) : null,
-        prereqId: n.prereqId ? (idMap[n.prereqId] || null) : null,
+        prereqIds: (n.prereqIds || []).map((id) => idMap[id]).filter(Boolean),
         categoryId: n.parentId ? null : cat.id,
         ox: 0, oy: 0,
         note: n.note || ''
