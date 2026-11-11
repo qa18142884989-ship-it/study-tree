@@ -435,23 +435,6 @@
   .io-row{display:flex;gap:8px;margin:0 0 10px}
   .io-row button{flex:1 1 0;text-align:center}
 
-  /* ---------- 右侧头像下方的竖排快捷面板（导入 / 导出 / 说明 / 反馈） ---------- */
-  .side-tools{
-    position:fixed;right:12px;top:64px;z-index:40;
-    display:flex;flex-direction:column;gap:4px;
-    padding:6px;
-    background:rgba(10,17,29,.9);
-    -webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
-    border:1px solid rgba(122,152,200,.18);
-    border-radius:10px;
-    box-shadow:0 12px 30px -14px rgba(0,0,0,.8);
-  }
-  .side-tools .btn-io{
-    flex-direction:row;align-items:center;justify-content:flex-start;gap:8px;
-    padding:7px 10px;border:0;font-size:12px;width:100%;
-  }
-  .side-tools .btn-io b{font-size:14px}
-
   .banner{
     position:fixed;top:56px;left:0;right:0;z-index:45;
     display:flex;align-items:center;gap:10px;
@@ -824,9 +807,9 @@
   .tt-block.break{background:rgba(250,204,21,.10) !important;border:1px dashed rgba(250,204,21,.55);color:#e6c84f}
   .tt-block.hl{outline:2px solid #38bdf8;outline-offset:1px;box-shadow:0 0 12px rgba(56,189,248,.35)}
   .tt-block.pick{outline:2px solid #f59e0b;outline-offset:1px;box-shadow:0 0 12px rgba(245,158,11,.4)}
-  .tt-block.band{height:20px !important;padding:2px 6px;display:flex;align-items:center;gap:6px;border-radius:4px}
-  .tt-block.band b{font-size:10px;font-weight:500;white-space:nowrap}
-  .tt-block.band span{font-size:9px;margin-top:0;white-space:nowrap}
+  .tt-block.band{padding:0 5px;display:flex;align-items:center;gap:5px;border-radius:4px}
+  .tt-block.band b{font-size:9px;font-weight:500;white-space:nowrap}
+  .tt-block.band span{font-size:8px;margin-top:0;white-space:nowrap;opacity:.85}
   .tt-item.sel{background:rgba(56,189,248,.12);outline:1px solid rgba(56,189,248,.45)}
   .tt-now{
     position:absolute;left:0;right:0;height:3px;margin-top:-1px;z-index:6;pointer-events:none;border-radius:3px;
@@ -876,7 +859,6 @@
   .tt-col-left{min-width:0}
   .tt-actions{display:flex;gap:8px;margin-bottom:12px}
   .tt-actions .btn-ghost{flex:1}
-  .tt-actions .btn-danger{flex:0 0 auto;font-size:12px;padding:6px 10px;white-space:nowrap}
   .tt-chars{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:-2px 0 12px}
   .tt-chars-label{font-size:11px;color:#6b7d99}
   .char-chip{
@@ -1081,7 +1063,6 @@
   /* 1024 以下（含平板）顶栏太挤：收进「⋯」面板 */
   @media (max-width:1100px){
     .btn-io{display:none}
-    .side-tools{display:none}
     .btn-more{
       display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;
       width:34px;height:34px;border-radius:10px;font-size:17px;line-height:1;
@@ -1192,7 +1173,11 @@
         <span class="points-cap" id="points-cap">/ 10</span>
       </div>
       <button class="btn-io" id="btn-timer" type="button" title="课表 / 日常规划 / 科技点转化"><b>◷</b>时间</button>
+      <button class="btn-io" id="btn-doc" type="button" title="使用说明"><b>?</b>说明</button>
       <button class="btn-io" id="btn-bp" type="button" title="蓝图市场 / 我的蓝图库"><b>◈</b>蓝图</button>
+      <button class="btn-io" id="btn-export" type="button" title="把整棵学习树导出成一个文件"><b>↓</b>导出</button>
+      <button class="btn-io" id="btn-import" type="button" title="导入别人的学习树文件"><b>↑</b>导入</button>
+      <button class="btn-io" id="btn-feedback" type="button" title="意见反馈：只有管理员能看到内容"><b>✎</b>反馈</button>
       <button class="btn-more" id="btn-more" type="button" title="更多功能" aria-label="更多功能">⋯</button>
       <button class="btn-primary" id="btn-new" type="button">＋ 新增</button>
       <button class="user-chip" id="user-chip" type="button" title="当前账号">
@@ -1202,13 +1187,6 @@
     </div>
   </div>
 </header>
-
-<nav class="side-tools" id="side-tools" aria-label="快捷工具">
-  <button class="btn-io" id="btn-import" type="button" title="导入别人的学习树文件"><b>↑</b>导入</button>
-  <button class="btn-io" id="btn-export" type="button" title="把整棵学习树导出成一个文件"><b>↓</b>导出</button>
-  <button class="btn-io" id="btn-doc" type="button" title="使用说明"><b>?</b>说明</button>
-  <button class="btn-io" id="btn-feedback" type="button" title="意见反馈：只有管理员能看到内容"><b>✎</b>反馈</button>
-</nav>
 
 <div class="sheet" id="tool-sheet" hidden>
   <div class="sheet-mask" data-sheet-close></div>
@@ -1643,7 +1621,6 @@
         <div class="tt-actions">
           <button class="btn-ghost" id="tt-copy" type="button">复制本周</button>
           <button class="btn-ghost" id="tt-paste" type="button">粘贴到此周</button>
-          <button class="btn-danger" id="tt-del-sel" type="button" hidden>删除选中</button>
         </div>
         <div class="tt-chars">
           <span class="tt-chars-label">角色</span>
@@ -1664,6 +1641,7 @@
             <button class="btn-primary" id="tc-add" type="button">添加</button>
           </div>
         </div>
+        <button class="btn-danger" id="tt-del-sel" type="button" hidden style="width:100%;margin-bottom:10px">删除选中</button>
         <div class="tt-list-head">本周安排 <span class="count" id="tt-list-count">0</span></div>
         <div class="tt-list" id="tt-list"></div>
         <div class="tt-tip">Ctrl+点同一天的两张卡片，中间自动插入课间（课间不算空闲）。</div>
@@ -6534,10 +6512,12 @@
       var block = el('div', 'tt-block' + (cls ? ' ' + cls : '') +
         (isBreak ? ' band' : '') + (widthPct < 55 && !isBreak ? ' narrow' : ''));
       block.style.top = ((s - TT_START) / 60 * TT_HOUR) + 'px';
+      var fullH = (e - s) / 60 * TT_HOUR - 2;
       if (isBreak) {
-        block.style.height = '20px';
+        /* 课间做成紧凑标签，但高度不超过它占用的时间段，避免压到相邻卡片 */
+        block.style.height = Math.max(4, Math.min(24, fullH)) + 'px';
       } else {
-        block.style.height = Math.max(16, (e - s) / 60 * TT_HOUR - 2) + 'px';
+        block.style.height = Math.max(6, fullH) + 'px';
       }
       block.style.left = (leftPct + 0.35) + '%';
       block.style.width = 'calc(' + (widthPct - 0.7) + '% - 1px)';
@@ -6864,27 +6844,43 @@
     return p ? p.title : null;
   }
 
+  var ttListTitle = null; // 清单点击高亮的同名标题
+
   function applyTtSelection() {
-    var valid = !!ttSelectedId && !!ttTitleOf(ttSelectedId);
+    var validCard = !!ttSelectedId && !!ttTitleOf(ttSelectedId);
     Array.prototype.forEach.call($ttGrid.querySelectorAll('.tt-block'), function (b) {
       var id = b.getAttribute('data-tt-del');
-      b.classList.toggle('hl', valid && id === ttSelectedId);
+      var title = b.getAttribute('data-tt-title');
+      var on = validCard ? (id === ttSelectedId) : (!!ttListTitle && title === ttListTitle);
+      b.classList.toggle('hl', on);
     });
     if ($ttList) {
       Array.prototype.forEach.call($ttList.querySelectorAll('.tt-item'), function (r) {
-        r.classList.toggle('sel', valid && r.getAttribute('data-tt-del') === ttSelectedId);
+        var id = r.getAttribute('data-tt-del');
+        var title = r.getAttribute('data-tt-title');
+        var on = validCard ? (id === ttSelectedId) : (!!ttListTitle && title === ttListTitle);
+        r.classList.toggle('sel', on);
       });
     }
     var btn = document.getElementById('tt-del-sel');
     if (btn) {
-      btn.hidden = !valid || readOnly;
-      if (valid) btn.textContent = '删除：' + ttTitleOf(ttSelectedId);
+      btn.hidden = !validCard || readOnly;
+      if (validCard) btn.textContent = '删除：' + ttTitleOf(ttSelectedId);
     }
   }
 
   function ttSelect(id) {
     if (readOnly) return;
+    ttListTitle = null;
     ttSelectedId = (ttSelectedId === id) ? null : id;
+    applyTtSelection();
+  }
+
+  /* 清单里点卡片：高亮课表中所有同名安排 */
+  function ttHighlightAll(title) {
+    if (readOnly) return;
+    ttSelectedId = null;
+    ttListTitle = (ttListTitle === title) ? null : title;
     applyTtSelection();
   }
 
@@ -6934,7 +6930,8 @@
     var b = e.target.closest('[data-tt-del]');
     if (!b) return;
     if (e.ctrlKey || e.metaKey) { ttCtrlPick(b); return; }
-    ttSelect(b.getAttribute('data-tt-del'));
+    if (b.classList.contains('tt-item')) ttHighlightAll(b.getAttribute('data-tt-title'));
+    else ttSelect(b.getAttribute('data-tt-del'));
   }
 
   $ttGrid.addEventListener('click', onTtClick);
