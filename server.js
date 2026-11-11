@@ -493,7 +493,7 @@ function normalizeTask(raw) {
 }
 
 function sanitizeTimer(raw) {
-  const t = { rate: 50, courses: [], plans: [], spent: 0, bonus: 0, weekKey: '' };
+  const t = { rate: 50, courses: [], plans: [], spent: 0, bonus: 0, weekKey: '', weeks: {} };
   if (!raw || typeof raw !== 'object') return t;
   const rate = Number(raw.rate);
   t.rate = isFinite(rate) ? Math.max(0, Math.min(100, Math.round(rate))) : 50;
@@ -502,32 +502,53 @@ function sanitizeTimer(raw) {
   t.bonus = isFinite(bonus) && bonus > 0 ? Math.round(bonus * 10) / 10 : 0;
   t.weekKey = typeof raw.weekKey === 'string' ? raw.weekKey.slice(0, 20) : '';
 
-  (Array.isArray(raw.courses) ? raw.courses : []).forEach((c) => {
-    if (!c || typeof c !== 'object') return;
+  function sanitizeCourse(c) {
+    if (!c || typeof c !== 'object') return null;
     const day = Math.round(Number(c.day));
     const start = Math.round(Number(c.start)), end = Math.round(Number(c.end));
-    if (!(day >= 1 && day <= 7) || !isFinite(start) || !isFinite(end) || end <= start) return;
-    t.courses.push({
+    if (!(day >= 1 && day <= 7) || !isFinite(start) || !isFinite(end) || end <= start) return null;
+    return {
       id: typeof c.id === 'string' && c.id ? c.id.slice(0, 64) : newId('c'),
       day: day, start: start, end: end,
       title: String(c.title || '').trim().slice(0, 30) || '课程'
-    });
-  });
-
-  (Array.isArray(raw.plans) ? raw.plans : []).forEach((p) => {
-    if (!p || typeof p !== 'object') return;
+    };
+  }
+  function sanitizePlan(p) {
+    if (!p || typeof p !== 'object') return null;
     const start = Math.round(Number(p.start)), end = Math.round(Number(p.end));
-    if (!isFinite(start) || !isFinite(end) || end <= start) return;
+    if (!isFinite(start) || !isFinite(end) || end <= start) return null;
     let days = (Array.isArray(p.days) ? p.days : [])
       .map((x) => Math.round(Number(x)))
       .filter((d) => d >= 1 && d <= 7);
     days = Array.from(new Set(days));
     if (!days.length) days = [1, 2, 3, 4, 5, 6, 7];
-    t.plans.push({
+    return {
       id: typeof p.id === 'string' && p.id ? p.id.slice(0, 64) : newId('p'),
       days: days, start: start, end: end,
-      title: String(p.title || '').trim().slice(0, 30) || '日常安排'
-    });
+      title: String(p.title || '').trim().slice(0, 30) || '安排'
+    };
+  }
+  function sanitizeSchedule(obj) {
+    return {
+      courses: (Array.isArray(obj && obj.courses) ? obj.courses : []).map(sanitizeCourse).filter(Boolean),
+      plans: (Array.isArray(obj && obj.plans) ? obj.plans : []).map(sanitizePlan).filter(Boolean)
+    };
+  }
+
+  // 按周存储的课表（只保留最近 ~一年内的周，防止无限增长）
+  if (raw.weeks && typeof raw.weeks === 'object') {
+    const keys = Object.keys(raw.weeks).filter((k) => /^\d{4}W\d{2}$/.test(k)).sort();
+    keys.slice(-80).forEach((k) => { t.weeks[k] = sanitizeSchedule(raw.weeks[k]); });
+  }
+
+  // 旧结构兼容：顶层 courses/plans 保留（客户端会迁移）
+  (Array.isArray(raw.courses) ? raw.courses : []).forEach((c) => {
+    const clean = sanitizeCourse(c);
+    if (clean) t.courses.push(clean);
+  });
+  (Array.isArray(raw.plans) ? raw.plans : []).forEach((p) => {
+    const clean = sanitizePlan(p);
+    if (clean) t.plans.push(clean);
   });
 
   return t;
